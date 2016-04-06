@@ -1,0 +1,12 @@
+Meldinger:
+
+Når knapp trykkes på panelet:
+-
+ * Etasje
+ * Timestamp
+ * Alle heiser sender videre til man har mottatt sin egen pakke
+
+- Svar: Hvis kan ta bestillingen, si avstand
+- Den nærmeste tar bestillingen
+- * Sender pakke med "Jeg tar'n"
+- Hvis ikke heisen får en pakke etter xx sek, tar bestillingen selv.
