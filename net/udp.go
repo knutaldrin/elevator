@@ -131,4 +131,3 @@ func udp_connection_reader(conn *net.UDPConn, message_size int, rcv_ch chan Udp_
 		rcv_ch <- Udp_message{Raddr: raddr.String(), Data: string(buf), Length: n}
 	}
 }
-
