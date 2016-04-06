@@ -9,4 +9,10 @@ Når knapp trykkes på panelet:
 - Svar: Hvis kan ta bestillingen, si avstand
 - Den nærmeste tar bestillingen
 - * Sender pakke med "Jeg tar'n"
+
 - Hvis ikke heisen får en pakke etter xx sek, tar bestillingen selv.
+- xx sek bestemmes av div faktorer: T = 0.5sek
+  * Heis n etasjer unna ==> add nT 
+  * Heis ikke idle ==> add fT, f=floors
+  * Heis beveger seg feil retning ==> add 2T
+  * Add unik offset xT der x = rand(seed(IP)) elns, 0 < x < 1
