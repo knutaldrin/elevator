@@ -1,30 +1,41 @@
 package log
 
 import "fmt"
+import cli "github.com/ivpusic/go-clicolor/clicolor"
 
-const Debug = true
-const Verbose = false
+const debug = true
+const verbose = false
 
 // Error messages
 func Error(msg ...interface{}) {
-	fmt.Println(msg)
+	cli.Print("ERROR: " + fmt.Sprint(msg...)).In("red")
 }
 
 // Warning messages
 func Warning(msg ...interface{}) {
+	cli.Print("Warning: " + fmt.Sprint(msg...)).In("yellow")
+}
+
+// Info is usually good
+func Info(msg ...interface{}) {
+	cli.Print(fmt.Sprint(msg...)).In("green")
+}
+
+// Text is normal text
+func Text(msg ...interface{}) {
 	fmt.Println(msg)
 }
 
-// Info is less important
-func Info(msg ...interface{}) {
-	if Debug {
-		fmt.Println(msg)
+// Debug messages
+func Debug(msg ...interface{}) {
+	if debug {
+		cli.Print(fmt.Sprint(msg...)).In("blue")
 	}
 }
 
 // Bullshit that you usually don't want to hear
 func Bullshit(msg ...interface{}) {
-	if Debug && Verbose {
-		fmt.Println(msg)
+	if debug && verbose {
+		cli.Print(fmt.Sprint(msg...)).In("magenta")
 	}
 }
