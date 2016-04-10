@@ -34,7 +34,13 @@ type ButtonEvent struct {
 	floor Floor
 }
 
-var currentFloor Floor = -1 // -1 is unknown
+func setFloorIndicator(floor Floor) {
+	C.elev_set_floor_indicator(C.int(floor))
+}
+
+func getFloor() Floor {
+	return Floor(C.elev_get_floor_sensor_signal())
+}
 
 // Init initializes the elevator, resets all lamps.
 func Init() {
@@ -44,16 +50,16 @@ func Init() {
 // Reset makes sure the elevator is at a safe floor on startup
 // Blocking, should never be called when listeners are running
 func Reset() {
-	currentFloor = Floor(C.elev_get_floor_sensor_signal())
+	currentFloor := getFloor()
 
 	if currentFloor == -1 {
 		log.Warning("Unknown floor")
 		// Move down until we hit something
 		RunDown()
 		for {
-			currentFloor = Floor(C.elev_get_floor_sensor_signal())
+			currentFloor = getFloor()
 			if currentFloor != -1 {
-				log.Info("Now at floor ", currentFloor)
+				log.Info("At floor ", currentFloor, ", ready for service")
 				setFloorIndicator(currentFloor)
 				break
 			}
@@ -61,12 +67,6 @@ func Reset() {
 		Stop()
 		// TODO: Open door?
 	}
-}
-
-// GetFloor returns the current floor. -1 is unknown.
-// TODO: Is this needed?
-func GetFloor() Floor {
-	return currentFloor
 }
 
 // OpenDoor opens the door
@@ -81,11 +81,19 @@ func CloseDoor() {
 
 // RunUp runs up
 func RunUp() {
+	if getFloor() == NumFloors-1 {
+		log.Error("Trying to go up from the top floor?!")
+		return
+	}
 	C.elev_set_motor_direction(1)
 }
 
 // RunDown runs down
 func RunDown() {
+	if getFloor() == 0 {
+		log.Error("Trying to go down from the bottom floor?!")
+		return
+	}
 	C.elev_set_motor_direction(-1)
 }
 
@@ -94,19 +102,16 @@ func Stop() {
 	C.elev_set_motor_direction(0)
 }
 
-func setFloorIndicator(floor Floor) {
-	C.elev_set_floor_indicator(C.int(floor))
-}
-
 // FloorListener sends event on floor update
 func FloorListener(ch chan<- Floor) {
+	currentFloor := getFloor()
 	for {
-		newFloor := Floor(C.elev_get_floor_sensor_signal())
+		newFloor := getFloor()
 		if newFloor > -1 {
 			if newFloor != currentFloor {
 				currentFloor = newFloor
 				setFloorIndicator(newFloor)
-				log.Debug("New floor: ", newFloor)
+				log.Debug("Now at floor ", newFloor)
 				ch <- newFloor
 			}
 		}

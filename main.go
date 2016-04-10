@@ -10,6 +10,10 @@ import (
 
 func main() {
 
+	// Init driver and make sure elevator is at a floor
+	driver.Init()
+	driver.Reset()
+
 	floorCh := make(chan driver.Floor)
 	go driver.FloorListener(floorCh)
 
@@ -19,16 +23,14 @@ func main() {
 	floorBtnCh := make(chan driver.ButtonEvent)
 	go driver.FloorButtonListener(floorBtnCh)
 
-	//	var a Job
-	driver.Init()
-	driver.Reset()
-
+	/* Fuck this test code shit
 	// Start
-	if driver.GetFloor() < 3 {
-		driver.RunUp()
-	} else {
+	if driver.GetFloor() < 3 { */
+	driver.RunUp()
+	/*} else {
 		driver.RunDown()
 	}
+	*/
 
 	// Oh, God almighty, please spare our ears
 	sigtermCh := make(chan os.Signal)
