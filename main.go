@@ -50,34 +50,44 @@ func main() {
 	/*   NETWORK TEST */
 	udp.Udp_init(13378, 13379, 256, send_ch, rcv_ch)
 
-	log.Text("Sending")
-	send_ch <- udp.Udp_message{Raddr: "broadcast", Data: "Abdi", Length: 4}
+	go func() {
+		for {
 
-	log.Text("Receiving")
-	rcv_msg := <-rcv_ch
-	fmt.Printf("msg:  \n \t raddr = %s \n \t data = %s \n \t length = %v \n", rcv_msg.Raddr, rcv_msg.Data, rcv_msg.Length)
+			log.Text("Sending")
+			send_ch <- udp.Udp_message{Raddr: "broadcast", Data: "Abdi", Length: 4}
 
+			log.Text("Receiving")
+			rcv_msg := <-rcv_ch
+			fmt.Printf("msg:  \n \t raddr = %s \n \t data = %s \n \t length = %v \n", rcv_msg.Raddr, rcv_msg.Data, rcv_msg.Length)
+		}
+	}()
+
+	for {
+	}
 	/* END NETWORK TEST */
 
 	// Main loop, will poll for events and act thereafter
-	for {
-		select {
-		case fl := <-floorCh:
-			switch fl {
-			case 0:
-				driver.RunUp()
-			case 3:
-				driver.RunDown()
+	/*
+		for {
+			select {
+			case fl := <-floorCh:
+				switch fl {
+				case 0:
+					driver.RunUp()
+				case 3:
+					driver.RunDown()
+				}
+
+			case stop := <-stopCh:
+				if stop {
+					driver.Stop()
+				}
+
+			case <-floorBtnCh:
+				// TODO: Noop
 			}
 
-		case stop := <-stopCh:
-			if stop {
-				driver.Stop()
-			}
-
-		case <-floorBtnCh:
-			// TODO: Noop
 		}
 
-	}
+	*/
 }
