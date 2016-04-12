@@ -3,9 +3,12 @@ package main
 import (
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 
 	"github.com/knutaldrin/elevator/driver"
+	"github.com/knutaldrin/elevator/log"
+	"github.com/knutaldrin/elevator/net"
 )
 
 func main() {
@@ -23,14 +26,7 @@ func main() {
 	floorBtnCh := make(chan driver.ButtonEvent)
 	go driver.FloorButtonListener(floorBtnCh)
 
-	/* Fuck this test code shit
-	// Start
-	if driver.GetFloor() < 3 { */
 	driver.RunUp()
-	/*} else {
-		driver.RunDown()
-	}
-	*/
 
 	// Oh, God almighty, please spare our ears
 	sigtermCh := make(chan os.Signal)
@@ -40,6 +36,11 @@ func main() {
 		driver.Stop()
 		os.Exit(0)
 	}(sigtermCh)
+
+	sendCh := make(chan string)
+
+	// kek
+	go net.Handler(sendCh)
 
 	for {
 		select {
@@ -56,9 +57,13 @@ func main() {
 				driver.Stop()
 			}
 
-		case <-floorBtnCh:
+		case fl := <-floorBtnCh:
 			// TODO: Noop
+			if fl.Kind == driver.ButtonDown || fl.Kind == driver.ButtonUp {
+				sendCh <- "NWOD" + strconv.Itoa(int(fl.Floor)) + strconv.Itoa(int(fl.Kind))
+			} else {
+				log.Info("Internal order for floor " + strconv.Itoa(int(fl.Floor)))
+			}
 		}
-
 	}
 }
