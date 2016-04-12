@@ -1,11 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 
+	udp "github.com/TTK4145/Network-go/udp"
 	"github.com/knutaldrin/elevator/driver"
+	"github.com/knutaldrin/elevator/log"
 )
 
 func main() {
@@ -41,6 +44,22 @@ func main() {
 		os.Exit(0)
 	}(sigtermCh)
 
+	send_ch := make(chan udp.Udp_message)
+	rcv_ch := make(chan udp.Udp_message)
+
+	/*   NETWORK TEST */
+	udp.Udp_init(13378, 13379, 256, send_ch, rcv_ch)
+
+	log.Text("Sending")
+	send_ch <- udp.Udp_message{Raddr: "broadcast", Data: "Abdi", Length: 4}
+
+	log.Text("Receiving")
+	rcv_msg := <-rcv_ch
+	fmt.Printf("msg:  \n \t raddr = %s \n \t data = %s \n \t length = %v \n", rcv_msg.Raddr, rcv_msg.Data, rcv_msg.Length)
+
+	/* END NETWORK TEST */
+
+	// Main loop, will poll for events and act thereafter
 	for {
 		select {
 		case fl := <-floorCh:
