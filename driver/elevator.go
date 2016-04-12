@@ -30,8 +30,8 @@ const (
 
 // ButtonEvent for use in button listener
 type ButtonEvent struct {
-	kind  ButtonType
-	floor Floor
+	Kind  ButtonType
+	Floor Floor
 }
 
 func setFloorIndicator(floor Floor) {
@@ -151,7 +151,7 @@ func FloorButtonListener(ch chan<- ButtonEvent) {
 					// Only dispatch an event if it's pressed
 					if newState {
 						log.Debug("Button type ", buttonType, " floor ", floor, " pressed")
-						ch <- ButtonEvent{kind: buttonType, floor: floor}
+						ch <- ButtonEvent{Kind: buttonType, Floor: floor}
 					} else {
 						log.Bullshit("Button type ", buttonType, " floor ", floor, " released")
 					}
@@ -160,3 +160,28 @@ func FloorButtonListener(ch chan<- ButtonEvent) {
 		}
 	}
 }
+
+// TODO: Should this be a separate one?
+// CommandButtonListener listens for... command buttons
+/*
+func CommandButtonListener(ch chan<- Floor) {
+	var commandButtonState [NumFloors]bool
+
+	for {
+		for floor := Floor(0); floor < NumFloors; floor++ {
+			newState := C.elev_get_button_signal(C.elev_button_type_t(ButtonCommand), C.int(floor)) != 0
+			if newState != commandButtonState[floor] {
+				commandButtonState[floor] = newState
+
+				// Only dispatch an event if it's pressed
+				if newState {
+					log.Debug("Command buttonf for floor ", floor, " pressed")
+					ch <- floor
+				} else {
+					log.Bullshit("Command button for floor ", floor, " released")
+				}
+			}
+		}
+	}
+}
+*/
