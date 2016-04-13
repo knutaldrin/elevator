@@ -45,7 +45,7 @@ func main() {
 		select {
 		case fl := <-floorCh:
 			// TODO: test fagit code
-			driver.ButtonLightOff(fl, driver.ButtonCommand)
+			driver.ButtonLightOff(fl, driver.DirectionNone)
 			switch fl {
 			case 0:
 				driver.RunUp()
@@ -60,7 +60,7 @@ func main() {
 
 		case fl := <-floorBtnCh:
 			// TODO: Noop
-			if fl.Kind == driver.ButtonDown || fl.Kind == driver.ButtonUp {
+			if fl.Kind == driver.DirectionDown || fl.Kind == driver.DirectionUp {
 				orderSendCh <- net.OrderMessage{Type: net.NewOrder, Floor: fl.Floor, Direction: fl.Kind}
 			} else {
 				log.Info("Internal order for floor " + strconv.Itoa(int(fl.Floor)))
