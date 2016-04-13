@@ -89,10 +89,8 @@ func Handler(send <-chan OrderMessage, receive chan<- OrderMessage) {
 
 			// TODO: Disregard messages coming from here
 
-			//switch msg.Data[:4] {
 			switch order.Type {
-			//case string(NewOrder): // New order
-			case NewOrder: // New order
+			case NewOrder:
 				// TODO: Do something sensible
 				dir := "up"
 				if string(msg.Data[5]) == "1" {
@@ -100,16 +98,16 @@ func Handler(send <-chan OrderMessage, receive chan<- OrderMessage) {
 				}
 				log.Info("New order: floor ", string(msg.Data[4]), ", ", dir)
 				break
-				//case string(AcceptedOrder): // Accepted order
-			case AcceptedOrder: // Accepted order
+
+			case AcceptedOrder:
 				dir := "up"
 				if string(msg.Data[5]) == "1" {
 					dir = "down"
 				}
 				log.Info("Accepted order: floor ", string(msg.Data[4]), ", ", dir)
 				break
-				//case string(CompletedOrder): // Completed order
-			case CompletedOrder: // Completed order
+
+			case CompletedOrder:
 				dir := "up"
 				if string(msg.Data[5]) == "1" {
 					dir = "down"
