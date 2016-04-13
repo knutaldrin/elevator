@@ -53,7 +53,7 @@ func Udp_init(localListenPort, broadcastListenPort, message_size int, send_ch, r
 func udp_transmit_server(lconn, bconn *net.UDPConn, send_ch chan Udp_message) {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Println("ERROR in udp_transmit_server: %s \n Closing connection.", r)
+			fmt.Printf("ERROR in udp_transmit_server: %s \n Closing connection.\n", r)
 			lconn.Close()
 			bconn.Close()
 		}
@@ -71,13 +71,13 @@ func udp_transmit_server(lconn, bconn *net.UDPConn, send_ch chan Udp_message) {
 		} else {
 			raddr, err := net.ResolveUDPAddr("udp", msg.Raddr)
 			if err != nil {
-				fmt.Printf("Error: udp_transmit_server: could not resolve raddr\n")
+				fmt.Println("Error: udp_transmit_server: could not resolve raddr.")
 				panic(err)
 			}
 			n, err = lconn.WriteToUDP([]byte(msg.Data), raddr)
 		}
 		if err != nil || n < 0 {
-			fmt.Printf("Error: udp_transmit_server: writing\n")
+			fmt.Println("Error: udp_transmit_server: writing.")
 			panic(err)
 		}
 		//		fmt.Printf("udp_transmit_server: Sent %s to %s \n", msg.Data, msg.Raddr)
@@ -87,7 +87,7 @@ func udp_transmit_server(lconn, bconn *net.UDPConn, send_ch chan Udp_message) {
 func udp_receive_server(lconn, bconn *net.UDPConn, message_size int, receive_ch chan Udp_message) {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Println("ERROR in udp_receive_server: %s \n Closing connection.", r)
+			fmt.Printf("ERROR in udp_receive_server: %s \n Closing connection.\n", r)
 			lconn.Close()
 			bconn.Close()
 		}
@@ -114,7 +114,7 @@ func udp_receive_server(lconn, bconn *net.UDPConn, message_size int, receive_ch 
 func udp_connection_reader(conn *net.UDPConn, message_size int, rcv_ch chan Udp_message) {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Println("ERROR in udp_connection_reader: %s \n Closing connection.", r)
+			fmt.Printf("ERROR in udp_connection_reader: %s \n Closing connection.\n", r)
 			conn.Close()
 		}
 	}()
