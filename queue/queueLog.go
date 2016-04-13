@@ -1,8 +1,13 @@
-package queue
+package main
 
 import (
-	"bytes"
+	"bufio"
+	"fmt"
+	"io"
 	"io/ioutil"
+	"os"
+	"strconv"
+	"strings"
 
 	"github.com/knutaldrin/elevator/log"
 )
@@ -12,46 +17,53 @@ import (
 const filename string = "OrderLog.txt"
 const nFloors int = 4
 
-func readLog() string { //tested
-	dat, err := ioutil.ReadFile(filename)
+//readFile leser loggen og returnerer innholdet som en int slice
+func readLog() []int {
+	file, err := os.Open(filename)
 	if err != nil {
 		log.Info(err)
 		ioutil.WriteFile(filename, []byte(""), 0666)
-		dat, _ = ioutil.ReadFile(filename)
+		file, _ = os.Open(filename)
 	}
 
-	return string(dat)
-}
+	defer file.Close()
 
-func writeLog(s string) { //tested
-	err := ioutil.WriteFile(filename, []byte(s), 0666)
-	if err != nil {
-		log.Info(err)
-	}
-}
+	reader := bufio.NewReader(file)
 
-func stringToIntSlice(s string) []int { //tested
 	var nSlice []int
 
-	for _, rn := range s { //Iterates over runes
-		nSlice = append(nSlice, int(rn)-'0')
+	for {
+		s, err := reader.ReadString('\n')
+		n, sErr := strconv.ParseInt(strings.Replace(strings.Replace(s, "\r", "", -1), "\n", "", -1), 10, 32) //Fjerner \r\n og parser streng
+		if err == io.EOF {
+			break
+		}
+		log.Check(err)
+		log.Check(sErr)
+		nSlice = append(nSlice, int(n))
 	}
 
 	return nSlice
 }
 
-func intSliceToString(ns []int) string { //tested
-	var buffer bytes.Buffer
+//writeLog formats its int slice argument and overwrites the log with it
+func writeLog(ns []int) {
+	var resultSlice []byte
+	var appendSlice []byte
 
 	for i := 0; i < len(ns); i++ {
-		buffer.WriteString(string(ns[i] + '0'))
+		appendSlice = []byte(strconv.FormatInt(int64(ns[i]), 10) + "\n")
+		for j := 0; j < len(appendSlice); j++ {
+			resultSlice = append(resultSlice, appendSlice[j])
+		}
 	}
 
-	return buffer.String()
+	ioutil.WriteFile(filename, resultSlice, 0666)
 }
 
-func IsInLog(floor int) bool { //tested
-	intSlice := stringToIntSlice(readLog())
+//IsInLog is a boolean check of whether a floor is recorded in the log.
+func IsInLog(floor int) bool {
+	intSlice := readLog()
 	for i := 0; i < len(intSlice); i++ {
 		if floor == intSlice[i] {
 			return true
@@ -60,8 +72,9 @@ func IsInLog(floor int) bool { //tested
 	return false
 }
 
-func RemoveFromLog(floor int) { //tested
-	oldSlice := stringToIntSlice(readLog())
+//RemoveFromLog removes a floor from the log file, shortening the file by one character. If the floor is not present in the log, nothing happens.
+func RemoveFromLog(floor int) {
+	oldSlice := readLog()
 	var newSlice []int
 
 	for i := 0; i < len(oldSlice); i++ {
@@ -69,19 +82,25 @@ func RemoveFromLog(floor int) { //tested
 			newSlice = append(newSlice, oldSlice[i])
 		}
 	}
-	writeLog(intSliceToString(newSlice))
+	writeLog(newSlice)
 }
 
-func AppendToLog(floor int) { //tested
-	if isInLog(floor) {
+//AppendToLog adds a floor from the log file, if the floor is not already in the queue. If added, the file size increases by one character.
+func AppendToLog(floor int) {
+	if IsInLog(floor) {
 		return
 	}
 
-	intSlice := stringToIntSlice(readLog())
+	intSlice := append(readLog(), floor)
 
-	intSlice = append(intSlice, floor)
-
-	writeLog(intSliceToString(intSlice))
+	writeLog(intSlice)
 }
 
-//nextInLog?
+//nextInLog?*/
+
+func main() {
+	fmt.Print(readLog())
+	writeLog([]int{6, 1, 3, 1231, 87, 132, 55555555})
+	fmt.Print("\n")
+	fmt.Print(readLog())
+}
