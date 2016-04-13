@@ -6,14 +6,23 @@ package driver
 #include "elev.h"
 #include "io.h"
 */
-import "C"
-import "github.com/knutaldrin/elevator/log"
+import (
+	"C"
+
+	"github.com/knutaldrin/elevator/log"
+)
 
 // NumFloors = number of floors in elevator
 const NumFloors = 4
 
 // Direction of travel: -1 = down, 0 = stop, 1 = up
 type Direction int8
+
+const (
+	DirectionUp   Direction = 0
+	DirectionDown           = 1
+	DirectionNone           = 2
+)
 
 // Floor is kinda self-explanatory. Duh.
 type Floor int8
@@ -77,6 +86,16 @@ func OpenDoor() {
 // CloseDoor closes the door
 func CloseDoor() {
 	C.elev_set_door_open_lamp(0)
+}
+
+// ButtonLightOn turns on the corresponding lamp
+func ButtonLightOn(floor Floor, dir ButtonType) {
+	C.elev_set_button_lamp(C.elev_button_type_t(dir), C.int(floor), 1)
+}
+
+// ButtonLightOff turns it off
+func ButtonLightOff(floor Floor, dir ButtonType) {
+	C.elev_set_button_lamp(C.elev_button_type_t(dir), C.int(floor), 0)
 }
 
 // RunUp runs up
