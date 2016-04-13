@@ -44,7 +44,8 @@ func main() {
 	for {
 		select {
 		case fl := <-floorCh:
-			// TODO: test fagit code
+			// TODO: If correct floor, let queue know AND ->
+			// Turn off light and send network message
 			driver.ButtonLightOff(fl, driver.DirectionNone)
 			switch fl {
 			case 0:
@@ -59,10 +60,12 @@ func main() {
 			}
 
 		case fl := <-floorBtnCh:
-			// TODO: Noop
 			if fl.Dir == driver.DirectionDown || fl.Dir == driver.DirectionUp {
+				// TODO: Let queue know
+				// Send network message
 				orderSendCh <- net.OrderMessage{Type: net.NewOrder, Floor: fl.Floor, Direction: fl.Dir}
 			} else {
+				// TODO: Let queue know about the order
 				log.Info("Internal order for floor " + strconv.Itoa(int(fl.Floor)))
 				driver.ButtonLightOn(fl.Floor, fl.Dir)
 			}
