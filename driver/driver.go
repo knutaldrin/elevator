@@ -6,11 +6,8 @@ package driver
 #include "elev.h"
 #include "io.h"
 */
-import (
-	"C"
-
-	"github.com/knutaldrin/elevator/log"
-)
+import "C"
+import "github.com/knutaldrin/elevator/log"
 
 // NumFloors = number of floors in elevator
 const NumFloors = 4
