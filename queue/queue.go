@@ -108,8 +108,10 @@ func JobManager(receive <-chan net.OrderMessage) {
 			}
 		}
 
+		now := time.Now()
+
 		for i := 0; i < len(myReceivedJobs); i++ {
-			if time.Now().After(myReceivedJobs[i].Timeout) {
+			if now.After(myReceivedJobs[i].Timeout) {
 				moveJob(myReceivedJobs[i], myReceivedJobs, myActiveJobs)
 			}
 		}
