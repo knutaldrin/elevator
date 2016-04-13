@@ -3,10 +3,10 @@ package net
 import (
 	"strconv"
 
+	crc16 "github.com/joaojeronimo/go-crc16"
 	"github.com/knutaldrin/elevator/driver"
 	"github.com/knutaldrin/elevator/log"
 	"github.com/knutaldrin/elevator/net/udp"
-	crc8 "github.com/mewpkg/hashutil/crc8"
 )
 
 /** MESSAGE FORMAT
@@ -37,26 +37,21 @@ type OrderMessage struct {
 }
 
 func orderToStr(order OrderMessage) string {
-	//
 	str := string(order.Type) + strconv.Itoa(int(order.Floor)) + strconv.Itoa(int(order.Direction))
-	crc := crc8.ChecksumATM([]byte(str))
-	// This is derp, due to FormatUint not padding 0
-	str += strconv.FormatUint(uint64((crc>>4)&0xf), 16) + strconv.FormatUint(uint64(crc&0xf), 16)
+	crc := crc16.Crc16([]byte(str))
+	// HAXHAX bitshift and convert to byte slice -> string
+	str += string([]byte{byte((crc >> 8) & 0xff), byte(crc & 0xff)})
 	return str
 }
 
 func strToOrder(str string) OrderMessage {
-	crc := crc8.ChecksumATM([]byte(str[:6]))
-	senderCrc, err := strconv.ParseUint(string(str[6:]), 16, 8)
+	// Check for CRC mismatch. Not tamper-proof, but should be corruption-proof.
+	calculatedCrc := crc16.Crc16([]byte(str[:6]))
+	receivedCrc := (uint16(str[6]) << 8) + uint16(str[7])
 
-	if err != nil {
-		log.Error(err.Error())
-	}
-
-	// This is ugly
-	if crc != uint8(senderCrc) {
-		log.Error("CRC mismatch: ", str[6:], " vs ", strconv.FormatUint(uint64((crc>>4)&0xf), 16)+strconv.FormatUint(uint64(crc&0xf), 16))
-		return OrderMessage{Type: InvalidOrder}
+	if calculatedCrc != receivedCrc {
+		log.Error("CRC mismatch in " + str[:4] + " message!")
+		return OrderMessage{Type: InvalidOrder} // Probably corrupted
 	}
 
 	floorNum, _ := strconv.Atoi(string(str[4]))
