@@ -15,9 +15,10 @@ import (
 // NumFloors = number of floors in elevator
 const NumFloors = 4
 
-// Direction of travel: -1 = down, 0 = stop, 1 = up
+// Direction of travel: 0 = up, 1 = down, 2 = none
 type Direction int8
 
+// enum definitions for direction
 const (
 	DirectionUp   Direction = 0
 	DirectionDown           = 1
@@ -27,19 +28,9 @@ const (
 // Floor is kinda self-explanatory. Duh.
 type Floor int8
 
-// ButtonType differs between up, down and internal buttons
-type ButtonType uint8
-
-// The floor button types
-const (
-	ButtonUp = ButtonType(iota)
-	ButtonDown
-	ButtonCommand
-)
-
 // ButtonEvent for use in button listener
 type ButtonEvent struct {
-	Kind  ButtonType
+	Kind  Direction
 	Floor Floor
 }
 
@@ -89,12 +80,12 @@ func CloseDoor() {
 }
 
 // ButtonLightOn turns on the corresponding lamp
-func ButtonLightOn(floor Floor, dir ButtonType) {
+func ButtonLightOn(floor Floor, dir Direction) {
 	C.elev_set_button_lamp(C.elev_button_type_t(dir), C.int(floor), 1)
 }
 
 // ButtonLightOff turns it off
-func ButtonLightOff(floor Floor, dir ButtonType) {
+func ButtonLightOff(floor Floor, dir Direction) {
 	C.elev_set_button_lamp(C.elev_button_type_t(dir), C.int(floor), 0)
 }
 
@@ -161,18 +152,18 @@ func FloorButtonListener(ch chan<- ButtonEvent) {
 	var floorButtonState [3][NumFloors]bool
 
 	for {
-		for buttonType := ButtonUp; buttonType <= ButtonCommand; buttonType++ {
+		for direction := DirectionUp; direction <= DirectionNone; direction++ {
 			for floor := Floor(0); floor < NumFloors; floor++ {
-				newState := C.elev_get_button_signal(C.elev_button_type_t(buttonType), C.int(floor)) != 0
-				if newState != floorButtonState[buttonType][floor] {
-					floorButtonState[buttonType][floor] = newState
+				newState := C.elev_get_button_signal(C.elev_button_type_t(direction), C.int(floor)) != 0
+				if newState != floorButtonState[direction][floor] {
+					floorButtonState[direction][floor] = newState
 
 					// Only dispatch an event if it's pressed
 					if newState {
-						log.Debug("Button type ", buttonType, " floor ", floor, " pressed")
-						ch <- ButtonEvent{Kind: buttonType, Floor: floor}
+						log.Debug("Button type ", direction, " floor ", floor, " pressed")
+						ch <- ButtonEvent{Kind: direction, Floor: floor}
 					} else {
-						log.Bullshit("Button type ", buttonType, " floor ", floor, " released")
+						log.Bullshit("Button type ", direction, " floor ", floor, " released")
 					}
 				}
 			}
@@ -188,7 +179,7 @@ func CommandButtonListener(ch chan<- Floor) {
 
 	for {
 		for floor := Floor(0); floor < NumFloors; floor++ {
-			newState := C.elev_get_button_signal(C.elev_button_type_t(ButtonCommand), C.int(floor)) != 0
+			newState := C.elev_get_button_signal(C.elev_button_type_t(DirectionNone), C.int(floor)) != 0
 			if newState != commandButtonState[floor] {
 				commandButtonState[floor] = newState
 

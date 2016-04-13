@@ -33,7 +33,7 @@ const (
 type OrderMessage struct {
 	Type      OrderType
 	Floor     driver.Floor
-	Direction driver.ButtonType
+	Direction driver.Direction
 }
 
 func orderToStr(order OrderMessage) string {
@@ -62,7 +62,7 @@ func strToOrder(str string) OrderMessage {
 	floorNum, _ := strconv.Atoi(string(str[4]))
 	dirNum, _ := strconv.Atoi(string(str[4]))
 
-	return OrderMessage{Type: OrderType(str[:4]), Floor: driver.Floor(floorNum), Direction: driver.ButtonType(dirNum)}
+	return OrderMessage{Type: OrderType(str[:4]), Floor: driver.Floor(floorNum), Direction: driver.Direction(dirNum)}
 
 }
 
