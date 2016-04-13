@@ -26,6 +26,10 @@ func main() {
 	floorBtnCh := make(chan driver.ButtonEvent)
 	go driver.FloorButtonListener(floorBtnCh)
 
+	orderSendCh := make(chan net.OrderMessage)
+	orderReceiveCh := make(chan net.OrderMessage)
+	go net.Handler(orderSendCh, orderReceiveCh)
+
 	driver.RunUp()
 
 	// Oh, God almighty, please spare our ears
@@ -36,11 +40,6 @@ func main() {
 		driver.Stop()
 		os.Exit(0)
 	}(sigtermCh)
-
-	sendCh := make(chan string)
-
-	// kek
-	go net.Handler(sendCh)
 
 	for {
 		select {
@@ -60,7 +59,7 @@ func main() {
 		case fl := <-floorBtnCh:
 			// TODO: Noop
 			if fl.Kind == driver.ButtonDown || fl.Kind == driver.ButtonUp {
-				sendCh <- "NWOD" + strconv.Itoa(int(fl.Floor)) + strconv.Itoa(int(fl.Kind))
+				orderSendCh <- net.OrderMessage{Type: net.NewOrder, Floor: fl.Floor, Direction: fl.Kind}
 			} else {
 				log.Info("Internal order for floor " + strconv.Itoa(int(fl.Floor)))
 			}

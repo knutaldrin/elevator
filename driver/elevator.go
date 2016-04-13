@@ -111,7 +111,7 @@ func FloorListener(ch chan<- Floor) {
 			if newFloor != currentFloor {
 				currentFloor = newFloor
 				setFloorIndicator(newFloor)
-				log.Debug("Now at floor ", newFloor)
+				log.Info("Now at floor ", newFloor)
 				ch <- newFloor
 			}
 		}
