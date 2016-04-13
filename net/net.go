@@ -10,7 +10,7 @@ import (
 )
 
 /** MESSAGE FORMAT
- * Always 6(TODO: 8) chars
+ * Always 8 chars
  *
  * 4 chars: type
  * * NWOD = New order
@@ -18,7 +18,7 @@ import (
  * * COOD = Completed order
  * 1 char: floor (0-indexed)
  * 1 char: direction (0: up, 1: down)
- * 1 char: hex-encoded crc8
+ * 2 chars: CRC-16 of the previous 6 bytes
  */
 
 type OrderType string
