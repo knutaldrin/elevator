@@ -11,6 +11,13 @@ func Error(msg ...interface{}) {
 	cli.Print("ERROR: " + fmt.Sprint(msg...)).In("red")
 }
 
+// Check an error, if != then log Error
+func Check(err error) {
+	if err != nil {
+		Error(err)
+	}
+}
+
 // Warning messages
 func Warning(msg ...interface{}) {
 	cli.Print("Warning: " + fmt.Sprint(msg...)).In("yellow")
