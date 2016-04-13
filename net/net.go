@@ -18,7 +18,7 @@ import (
  * * COOD = Completed order
  * 1 char: floor (0-indexed)
  * 1 char: direction (0: up, 1: down)
- * TODO: 2 byte crc or whatever
+ * 1 char: hex-encoded crc8
  */
 
 type OrderType string
@@ -56,7 +56,7 @@ func strToOrder(str string) OrderMessage {
 	// This is ugly
 	if crc != uint8(senderCrc) {
 		log.Error("CRC mismatch: ", str[6:], " vs ", strconv.FormatUint(uint64((crc>>4)&0xf), 16)+strconv.FormatUint(uint64(crc&0xf), 16))
-		return OrderMessage{Type: InvalidOrder} // TODO
+		return OrderMessage{Type: InvalidOrder}
 	}
 
 	floorNum, _ := strconv.Atoi(string(str[4]))
@@ -72,15 +72,15 @@ const MSGLEN = 8
 
 // Handles communication with other elevators
 func Handler(send <-chan OrderMessage, receive chan<- OrderMessage) {
-	sendCh := make(chan udp.Udp_message)
-	recvCh := make(chan udp.Udp_message)
+	udpSendCh := make(chan udp.Udp_message)
+	udpRecvCh := make(chan udp.Udp_message)
 
-	udp.Udp_init(LPORT, BPORT, MSGLEN, sendCh, recvCh)
+	udp.Udp_init(LPORT, BPORT, MSGLEN, udpSendCh, udpRecvCh)
 
 	for {
 		select {
-		case msg := <-recvCh:
-			if msg.Length != 8 { // Disregard messages not 6 in length
+		case msg := <-udpRecvCh:
+			if msg.Length != 8 { // Disregard messages not 8 in length
 				log.Warning("Non-8-byte message received")
 				continue
 			}
@@ -122,7 +122,7 @@ func Handler(send <-chan OrderMessage, receive chan<- OrderMessage) {
 			//str := string(order.Type) + strconv.Itoa(int(order.Floor)) + strconv.Itoa(int(order.Direction))
 			str := orderToStr(order)
 			log.Debug("Sending message: ", str)
-			sendCh <- udp.Udp_message{Raddr: "broadcast", Data: str}
+			udpSendCh <- udp.Udp_message{Raddr: "broadcast", Data: str}
 		}
 	}
 
