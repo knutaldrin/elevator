@@ -27,7 +27,7 @@ type Floor int8
 
 // ButtonEvent for use in button listener
 type ButtonEvent struct {
-	Kind  Direction
+	Dir   Direction
 	Floor Floor
 }
 
@@ -158,7 +158,7 @@ func FloorButtonListener(ch chan<- ButtonEvent) {
 					// Only dispatch an event if it's pressed
 					if newState {
 						log.Debug("Button type ", direction, " floor ", floor, " pressed")
-						ch <- ButtonEvent{Kind: direction, Floor: floor}
+						ch <- ButtonEvent{Dir: direction, Floor: floor}
 					} else {
 						log.Bullshit("Button type ", direction, " floor ", floor, " released")
 					}

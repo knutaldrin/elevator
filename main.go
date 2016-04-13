@@ -60,11 +60,11 @@ func main() {
 
 		case fl := <-floorBtnCh:
 			// TODO: Noop
-			if fl.Kind == driver.DirectionDown || fl.Kind == driver.DirectionUp {
-				orderSendCh <- net.OrderMessage{Type: net.NewOrder, Floor: fl.Floor, Direction: fl.Kind}
+			if fl.Dir == driver.DirectionDown || fl.Dir == driver.DirectionUp {
+				orderSendCh <- net.OrderMessage{Type: net.NewOrder, Floor: fl.Floor, Direction: fl.Dir}
 			} else {
 				log.Info("Internal order for floor " + strconv.Itoa(int(fl.Floor)))
-				driver.ButtonLightOn(fl.Floor, fl.Kind)
+				driver.ButtonLightOn(fl.Floor, fl.Dir)
 			}
 		}
 	}
