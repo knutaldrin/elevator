@@ -1,4 +1,4 @@
-package queue
+package main
 
 import (
 	"time"
@@ -35,10 +35,7 @@ var dirStatus driver.Direction
 var myReceivedJobs []Job
 var myActiveJobs []Job
 
-//setFloorStatus
-//setDirStatus
-//setIDOffset
-
+//UTILITY FUNCTIONS
 //orderToJob initializes a job with Floor and Dir from a net.OrderMessage. DOES NOT INITIALIZE TIMEOUT
 func makeJob(f driver.Floor, d driver.Direction) Job {
 	var j Job
@@ -80,14 +77,28 @@ func extendTimeout(job Job, queue []Job, t time.Duration) {
 	}
 }
 
+//isAhead checks whether or not a job is ahead in the direction of travel
 func isAhead(job Job) bool {
-	return true //TODO
+	switch dirStatus {
+	case driver.DirectionUp:
+		if job.Floor > floorStatus {
+			return true
+		}
+		break
+	case driver.DirectionDown:
+		if job.Floor < floorStatus {
+			return true
+		}
+		break
+	}
+	return false //False if no direction/idle
 }
 
 func floorAbsDiff(a, b driver.Floor) int {
 	return 1 //TODO return int(math.Abs(float(a) - float(b))
 }
 
+//COST FUNCTION
 //generateTimeout is effectively the cost function, assigning a timeout point to a job based on the status of the local elevator. A "convenient" job generates a short delay.
 func generateTimeout(job Job) time.Time {
 	var d time.Duration
@@ -100,14 +111,15 @@ func generateTimeout(job Job) time.Time {
 			d += t
 
 		}
+
+		d += idOffset
 	}
 
 	return time.Now().Add(d)
 }
 
 func generateIDOffset(id int8) time.Duration {
-	//TODO Make more smarterer
-	return time.Duration(id) * 10 * time.Millisecond
+	return time.Duration(id) * t / 4
 }
 
 func isInQueue(job Job, queue []Job) bool {
@@ -119,15 +131,15 @@ func isInQueue(job Job, queue []Job) bool {
 	return false
 }
 
-//JobManager should be spawned as a goroutine and manages the work queues.
-func JobManager(receive <-chan net.OrderMessage, id int8) {
+//QueueManager should be spawned as a goroutine and manages the work queues.
+func QueueManager(received <-chan net.OrderMessage, id int8) {
 	log.Debug("Initializing Job manager")
 	idOffset = generateIDOffset(id)
-	log.Debug("Generated unique offset: %d Milliseconds", 1000000*idOffset.Nanoseconds())
+	log.Debug("Generated unique offset: %d Milliseconds", idOffset.Nanoseconds()/1000000)
 
 	for {
 		select {
-		case order := <-receive:
+		case order := <-received:
 			job := makeJob(order.Floor, order.Direction)
 			switch order.Type {
 			case net.NewOrder:
@@ -142,6 +154,9 @@ func JobManager(receive <-chan net.OrderMessage, id int8) {
 			case net.CompletedOrder:
 				myReceivedJobs = removeJob(job, myReceivedJobs)
 				break
+			case net.InternalOrder:
+				myActiveJobs = append(myReceivedJobs, job)
+				break
 			}
 		}
 
@@ -150,24 +165,31 @@ func JobManager(receive <-chan net.OrderMessage, id int8) {
 		for i := 0; i < len(myReceivedJobs); i++ {
 			if now.After(myReceivedJobs[i].Timeout) {
 				myActiveJobs = moveJob(myReceivedJobs[i], myReceivedJobs, myActiveJobs)
-				log.Debug("Moved job: Floor %d, Direction %d from received to active", myReceivedJobs[i].Floor, myReceivedJobs[i].Direction)
+				log.Debug("Accepted job: Floor %d, Direction %d", myReceivedJobs[i].Floor, myReceivedJobs[i].Direction)
 			}
 		}
 	}
 }
 
-//NextDirection returns the next direction that should be targeted by the elevator
-func NextDirection() driver.Direction { //TODO Probably need to make more intelligent
-	if myActiveJobs[0].Floor > floorStatus {
-		return driver.DirectionUp
-	}
-	return driver.DirectionDown
+//SetDirStatus sets the direction status
+func SetDirStatus(dir driver.Direction) {
+	dirStatus = dir
 }
 
-//IsJobTarget reports the status of the elevator to the queue, and returns whether or not it is a target (if it should stop). If yes, the relevant job is completed and removed from the queue.
-func IsJobTarget(floor driver.Floor, dir driver.Direction) bool {
+//SetFloorStatusIsTarget reports the floor and direction of the elevator to the queue, and returns whether or not it is a target (if it should stop). If yes, the relevant job is completed and removed from the queue.
+func SetFloorStatusIsTarget(floor driver.Floor, dir driver.Direction) bool {
+	floorStatus = floor
 	if isInQueue(makeJob(floor, dir), myActiveJobs) || isInQueue(makeJob(floor, driver.DirectionNone), myActiveJobs) { //Also checks for internal orders (DirectionNone)
 		return true
 	}
 	return false
+}
+
+//NextTarget returns the next direction that should be targeted by the elevator
+func NextTarget() driver.Floor { //TODO Probably need to make more intelligent
+	return myActiveJobs[0].Floor
+}
+
+func main() {
+
 }

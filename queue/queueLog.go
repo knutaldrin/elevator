@@ -2,7 +2,6 @@ package queue
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -96,11 +95,15 @@ func AppendToLog(floor int) {
 	writeLog(intSlice)
 }
 
-//nextInLog?*/
+//nextInLog?
 
-func main() {
-	fmt.Print(readLog())
+/*func main() {
+	fmt.Print(readLog(), "\n")
 	writeLog([]int{6, 1, 3, 1231, 87, 132, 55555555})
 	fmt.Print("\n")
-	fmt.Print(readLog())
-}
+	fmt.Print(readLog(), "\n")
+	AppendToLog(55)
+	fmt.Print(readLog(), "\n")
+	RemoveFromLog(55555555)
+	fmt.Print(readLog(), "\n")
+}*/
