@@ -120,7 +120,3 @@ func Handler(send <-chan OrderMessage, receive chan<- OrderMessage) {
 	}
 
 }
-
-func NewExternalOrder() {
-
-}
