@@ -72,9 +72,13 @@ func extendTimeout(job Job, queue []Job, t time.Duration) {
 }
 
 //generateTimeout is effectively the cost function, assigning a timeout point to a job based on the status of the local elevator. A "convenient" job generates a short delay.
-func generateTimeout(floorStatus driver.Floor, dirStatus driver.Direction, job Job) time.Time {
+func generateTimeout(floorStatus driver.Floor, dirStatus driver.Direction, job Job, offset time.Duration) time.Time {
 	//TODO
 	return (time.Now()).Add(10 * time.Second)
+}
+
+func generateOffset(id int8) time.Duration {
+	return time.Second
 }
 
 func isInQueue(job Job, queue []Job) bool {
@@ -87,7 +91,9 @@ func isInQueue(job Job, queue []Job) bool {
 }
 
 //JobManager should be spawned as a goroutine and manages the work queues.
-func JobManager(receive <-chan net.OrderMessage) {
+func JobManager(receive <-chan net.OrderMessage, id int8) {
+	offset := generateOffset(id)
+
 	for {
 		select {
 		case order := <-receive:
@@ -95,7 +101,7 @@ func JobManager(receive <-chan net.OrderMessage) {
 			switch order.Type {
 			case net.NewOrder:
 				if !isInQueue(job, myReceivedJobs) {
-					job.Timeout = generateTimeout(floorStatus, dirStatus, job)
+					job.Timeout = generateTimeout(floorStatus, dirStatus, job, offset)
 					myReceivedJobs = append(myReceivedJobs, job)
 				}
 				break
