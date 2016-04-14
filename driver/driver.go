@@ -12,7 +12,7 @@ import "github.com/knutaldrin/elevator/log"
 // NumFloors = number of floors in elevator
 const NumFloors = 4
 
-// Direction of travel: 0 = up, 1 = down, 2 = none
+// Direction of travel
 type Direction int8
 
 // enum definitions for direction
@@ -22,8 +22,8 @@ const (
 	DirectionNone           = 2
 )
 
-// Floor is kinda self-explanatory. Duh.
-type Floor int8
+// Floor is a floor. negative -> invalid
+type Floor int16
 
 // ButtonEvent for use in button listener
 type ButtonEvent struct {
@@ -92,6 +92,7 @@ func RunUp() {
 		log.Error("Trying to go up from the top floor?!")
 		return
 	}
+	//queue.setDirStatus(1)
 	C.elev_set_motor_direction(1)
 }
 

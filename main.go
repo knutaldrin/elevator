@@ -30,6 +30,9 @@ func main() {
 	orderReceiveCh := make(chan net.OrderMessage)
 	go net.Handler(orderSendCh, orderReceiveCh)
 
+	orderQueueCh := make(chan net.OrderMessage)
+	//go queue.Manager(orderQueueCh)
+
 	driver.RunUp()
 
 	// Oh, God almighty, please spare our ears

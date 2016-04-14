@@ -21,6 +21,7 @@ import (
  * 2 chars: CRC-16 of the previous 6 bytes
  */
 
+//OrderType is an enum for communicating information about orders
 type OrderType string
 
 const (
@@ -28,6 +29,7 @@ const (
 	NewOrder                 = "NWOD"
 	AcceptedOrder            = "ACOD"
 	CompletedOrder           = "COOD"
+	InternalOrder            = "INOD"
 )
 
 type OrderMessage struct {
