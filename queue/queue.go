@@ -1,12 +1,17 @@
 package main
 
 import (
+	"fmt"
+	"math"
 	"time"
 
 	"github.com/knutaldrin/elevator/driver"
 	"github.com/knutaldrin/elevator/log"
 	"github.com/knutaldrin/elevator/net"
 )
+
+//This is arbitrary and could be set to 2^32 - however this could potentially cause multiple elevators to take the same order.
+const nMaxElev int = 5
 
 //Job struct is an entry in the job queue. An expired Timeout indicates the job should be accepted and moved to myActiveJobs.
 type Job struct {
@@ -23,8 +28,9 @@ type OrderMessage struct {
 }
 */
 
-const t time.Duration = time.Second          //time unit
-const delay time.Duration = 20 * time.Second //Delay for order accepted by other elevator
+const t time.Duration = 50 * time.Millisecond
+
+const delay time.Duration = 15 * time.Second //Delay for order accepted by other elevator
 
 var idOffset time.Duration
 
@@ -45,36 +51,45 @@ func makeJob(f driver.Floor, d driver.Direction) Job {
 }
 
 //compareJob
-func compareJob(a Job, b Job) bool {
+func compareJob(a, b Job) bool {
 	return (a.Direction == b.Direction && a.Floor == b.Floor)
 }
 
-//removeJob from a queue. Returns resulting queue
-func removeJob(job Job, queue []Job) []Job {
-	var newQueue []Job
+func isInQueue(queue []Job, job Job) bool {
 	for i := 0; i < len(queue); i++ {
-		if queue[i] != job {
-			newQueue = append(newQueue, queue[i])
+		if compareJob(queue[i], job) {
+			return true
 		}
 	}
-	log.Debug("Removed job: Floor %d, Direction %d", job.Floor, job.Direction)
+	return false
+}
+
+//addJob to a queue. Returns resulting queue.
+func addJob(queue []Job, job Job) []Job {
+	if !isInQueue(queue, job) {
+		queue = append(queue, job)
+	}
+	log.Debug("Added job: Floor, Direction: ", job.Floor, ", ", job.Direction)
+	return queue
+}
+
+//removeJob from a queue. Returns resulting queue.
+func removeJob(queue []Job, job Job) []Job {
+	var newQueue []Job
+	for i := 0; i < len(queue); i++ {
+		if !compareJob(queue[i], job) {
+			newQueue = append(newQueue, queue[i])
+		} else {
+			log.Debug("Removed job: Floor, Direction: ", job.Floor, ", ", job.Direction)
+		}
+	}
 	return newQueue
 }
 
 //moveTo moves a job from one queue to another. Returns resulting target queue.
 func moveJob(job Job, from []Job, target []Job) []Job {
-	removeJob(job, from)
+	removeJob(from, job)
 	return append(target, job)
-}
-
-//extendTimeout of a job in a queue by t
-func extendTimeout(job Job, queue []Job, t time.Duration) {
-	for i := 0; i < len(queue); i++ {
-		if compareJob(queue[i], job) {
-			queue[i].Timeout = queue[i].Timeout.Add(t)
-			return
-		}
-	}
 }
 
 //isAhead checks whether or not a job is ahead in the direction of travel
@@ -95,7 +110,23 @@ func isAhead(job Job) bool {
 }
 
 func floorAbsDiff(a, b driver.Floor) int {
-	return 1 //TODO return int(math.Abs(float(a) - float(b))
+	return int(math.Abs(float64(a - b)))
+}
+
+//generateIDOffset generates the unique delay for each elevator to avoid multiple elevators taking the same order.
+//nMaxElev determines the "resolution" of the delay space.
+func generateIDOffset(id int8) time.Duration {
+	return time.Duration(float32(id)/float32(nMaxElev)) * t
+}
+
+//extendTimeout of a job in a queue by t
+func extendTimeout(queue []Job, job Job, t time.Duration) {
+	for i := 0; i < len(queue); i++ {
+		if compareJob(queue[i], job) {
+			queue[i].Timeout = queue[i].Timeout.Add(t)
+			return
+		}
+	}
 }
 
 //COST FUNCTION
@@ -103,39 +134,28 @@ func floorAbsDiff(a, b driver.Floor) int {
 func generateTimeout(job Job) time.Time {
 	var d time.Duration
 
-	//diff := floorAbsDiff(job.Floor, floorStatus)
-
 	if !isAhead(job) {
 		d += t
 		if dirStatus != driver.DirectionNone {
-			d += t
-
+			d += t * time.Duration(floorAbsDiff(job.Floor, floorStatus)+1)
 		}
 
 		d += idOffset
+		fmt.Print(d)
 	}
 
 	return time.Now().Add(d)
 }
 
-func generateIDOffset(id int8) time.Duration {
-	return time.Duration(id) * t / 4
-}
-
-func isInQueue(job Job, queue []Job) bool {
-	for i := 0; i < len(queue); i++ {
-		if compareJob(queue[i], job) {
-			return true
-		}
-	}
-	return false
-}
-
-//QueueManager should be spawned as a goroutine and manages the work queues.
-func QueueManager(received <-chan net.OrderMessage, id int8) {
-	log.Debug("Initializing Job manager")
+//Manager should be spawned as a goroutine and manages the work queues.
+func Manager(received <-chan net.OrderMessage, id int8) {
+	log.Debug("Initializing Queueueueueue manager")
 	idOffset = generateIDOffset(id)
 	log.Debug("Generated unique offset: %d Milliseconds", idOffset.Nanoseconds()/1000000)
+
+	//Queue init
+	myReceivedJobs = make([]Job, 0)
+	myActiveJobs = make([]Job, 0)
 
 	for {
 		select {
@@ -143,19 +163,19 @@ func QueueManager(received <-chan net.OrderMessage, id int8) {
 			job := makeJob(order.Floor, order.Direction)
 			switch order.Type {
 			case net.NewOrder:
-				if !isInQueue(job, myReceivedJobs) {
+				if !isInQueue(myReceivedJobs, job) {
 					job.Timeout = generateTimeout(job)
-					myReceivedJobs = append(myReceivedJobs, job)
+					myReceivedJobs = addJob(myReceivedJobs, job)
 				}
 				break
 			case net.AcceptedOrder:
-				extendTimeout(job, myReceivedJobs, delay)
+				extendTimeout(myReceivedJobs, job, delay)
 				break
 			case net.CompletedOrder:
-				myReceivedJobs = removeJob(job, myReceivedJobs)
+				myReceivedJobs = removeJob(myReceivedJobs, job)
 				break
 			case net.InternalOrder:
-				myActiveJobs = append(myReceivedJobs, job)
+				myActiveJobs = addJob(myReceivedJobs, job)
 				break
 			}
 		}
@@ -165,7 +185,7 @@ func QueueManager(received <-chan net.OrderMessage, id int8) {
 		for i := 0; i < len(myReceivedJobs); i++ {
 			if now.After(myReceivedJobs[i].Timeout) {
 				myActiveJobs = moveJob(myReceivedJobs[i], myReceivedJobs, myActiveJobs)
-				log.Debug("Accepted job: Floor %d, Direction %d", myReceivedJobs[i].Floor, myReceivedJobs[i].Direction)
+				log.Debug("Accepted job: Floor and direction:", myReceivedJobs[i].Floor, ",", myReceivedJobs[i].Direction)
 			}
 		}
 	}
@@ -176,10 +196,16 @@ func SetDirStatus(dir driver.Direction) {
 	dirStatus = dir
 }
 
-//SetFloorStatusIsTarget reports the floor and direction of the elevator to the queue, and returns whether or not it is a target (if it should stop). If yes, the relevant job is completed and removed from the queue.
-func SetFloorStatusIsTarget(floor driver.Floor, dir driver.Direction) bool {
+//StatusUpdate reports the floor and direction of the elevator to the queue, and returns whether or not the current state is a target (if it should stop).
+//If yes, the relevant job is completed and removed from the queue.
+func StatusUpdate(floor driver.Floor, dir driver.Direction) bool {
 	floorStatus = floor
-	if isInQueue(makeJob(floor, dir), myActiveJobs) || isInQueue(makeJob(floor, driver.DirectionNone), myActiveJobs) { //Also checks for internal orders (DirectionNone)
+	extJob := makeJob(floor, dir)
+	intJob := makeJob(floor, driver.DirectionNone)
+	log.Debug("Status update to queue: Floor: ", floor, " Dir: ", dir)
+	if isInQueue(myActiveJobs, extJob) || isInQueue(myActiveJobs, intJob) { //Also checks for internal orders (DirectionNone)
+		myActiveJobs = removeJob(myActiveJobs, intJob)
+		myActiveJobs = removeJob(myActiveJobs, extJob)
 		return true
 	}
 	return false
@@ -187,9 +213,46 @@ func SetFloorStatusIsTarget(floor driver.Floor, dir driver.Direction) bool {
 
 //NextTarget returns the next direction that should be targeted by the elevator
 func NextTarget() driver.Floor { //TODO Probably need to make more intelligent
+	defer func() {
+		if r := recover(); r != nil {
+			log.Info("Recovered in NextTarget: ", r)
+		}
+	}()
 	return myActiveJobs[0].Floor
 }
 
 func main() {
+	log.Error("UTIL TEST\n")
+	log.Info(floorAbsDiff(2, 2), "\n")
+	log.Info(floorAbsDiff(2, 4), "\n\n")
+
+	log.Error("QUEUE TEST\n")
+	fmt.Print(NextTarget(), "\n")
+	fmt.Print(makeJob(1, driver.DirectionUp), "\n")
+	myActiveJobs = addJob(myActiveJobs, makeJob(1, driver.DirectionUp))
+	fmt.Print(myActiveJobs, "\n")
+	fmt.Print(NextTarget(), "\n")
+	myActiveJobs = addJob(myActiveJobs, makeJob(3, driver.DirectionNone))
+	fmt.Print(myActiveJobs, "\n")
+	fmt.Print(NextTarget(), "\n")
+	myActiveJobs = addJob(myActiveJobs, makeJob(55, driver.DirectionUp))
+	fmt.Print(myActiveJobs, "\n")
+	fmt.Print(NextTarget(), "\n")
+	myActiveJobs = addJob(myActiveJobs, makeJob(1521, driver.DirectionUp))
+	fmt.Print(myActiveJobs, "\n")
+	fmt.Print(NextTarget(), "\n")
+	myActiveJobs = addJob(myActiveJobs, makeJob(55, driver.DirectionUp))
+	fmt.Print(myActiveJobs, "\n")
+	fmt.Print(NextTarget(), "\n")
+	myActiveJobs = removeJob(myActiveJobs, makeJob(55, driver.DirectionUp))
+	fmt.Print(myActiveJobs, "\n")
+	fmt.Print(NextTarget(), "\n")
+	fmt.Print(StatusUpdate(1, driver.DirectionDown), "\n")
+	fmt.Print(myActiveJobs, "\n")
+	fmt.Print(NextTarget(), "\n")
+	fmt.Print(StatusUpdate(1, driver.DirectionUp), "\n")
+	fmt.Print(myActiveJobs, "\n")
+	fmt.Print(NextTarget(), "\n")
+	fmt.Print("\n\n")
 
 }
