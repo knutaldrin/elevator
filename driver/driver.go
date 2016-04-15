@@ -7,7 +7,11 @@ package driver
 #include "io.h"
 */
 import "C"
-import "github.com/knutaldrin/elevator/log"
+import (
+	"sync"
+
+	"github.com/knutaldrin/elevator/log"
+)
 
 // NumFloors = number of floors in elevator
 const NumFloors = 4
@@ -18,8 +22,8 @@ type Direction int8
 // enum definitions for direction
 const (
 	DirectionUp   Direction = 0
-	DirectionDown           = 1
-	DirectionNone           = 2
+	DirectionDown Direction = 1
+	DirectionNone Direction = 2
 )
 
 // Floor is a floor. negative -> invalid (bitsize arbitrary)
@@ -31,12 +35,19 @@ type ButtonEvent struct {
 	Floor Floor
 }
 
+var mutex = &sync.Mutex{}
+
 func setFloorIndicator(floor Floor) {
+	mutex.Lock()
 	C.elev_set_floor_indicator(C.int(floor))
+	mutex.Unlock()
 }
 
 func getFloor() Floor {
-	return Floor(C.elev_get_floor_sensor_signal())
+	mutex.Lock()
+	floor := Floor(C.elev_get_floor_sensor_signal())
+	mutex.Unlock()
+	return floor
 }
 
 // Init initializes the elevator, resets all lamps.
@@ -58,35 +69,55 @@ func Reset() Floor {
 		for {
 			currentFloor = getFloor()
 			if currentFloor != -1 {
+				log.Info("At floor ", currentFloor, ", ready for service")
+				setFloorIndicator(currentFloor)
 				break
 			}
 		}
 		Stop()
 		// TODO: Open door?
 	}
-	log.Info("At floor ", currentFloor, ", ready for service")
-	setFloorIndicator(currentFloor)
 	return currentFloor
 }
 
 // OpenDoor opens the door
 func OpenDoor() {
+	mutex.Lock()
 	C.elev_set_door_open_lamp(1)
+	mutex.Unlock()
 }
 
 // CloseDoor closes the door
 func CloseDoor() {
+	mutex.Lock()
 	C.elev_set_door_open_lamp(0)
+	mutex.Unlock()
 }
 
 // ButtonLightOn turns on the corresponding lamp
 func ButtonLightOn(floor Floor, dir Direction) {
+	mutex.Lock()
 	C.elev_set_button_lamp(C.elev_button_type_t(dir), C.int(floor), 1)
+	mutex.Unlock()
 }
 
 // ButtonLightOff turns it off
 func ButtonLightOff(floor Floor, dir Direction) {
+	mutex.Lock()
 	C.elev_set_button_lamp(C.elev_button_type_t(dir), C.int(floor), 0)
+	mutex.Unlock()
+}
+
+// Run aka Walk This Way
+func Run(dir Direction) {
+	switch dir {
+	case DirectionUp:
+		RunUp()
+	case DirectionDown:
+		RunDown()
+	case DirectionNone:
+		Stop()
+	}
 }
 
 // RunUp runs up
@@ -95,7 +126,9 @@ func RunUp() {
 		log.Error("Trying to go up from the top floor?!")
 		return
 	}
+	mutex.Lock()
 	C.elev_set_motor_direction(1)
+	mutex.Unlock()
 }
 
 // RunDown runs down
@@ -104,12 +137,16 @@ func RunDown() {
 		log.Error("Trying to go down from the bottom floor?!")
 		return
 	}
+	mutex.Lock()
 	C.elev_set_motor_direction(-1)
+	mutex.Unlock()
 }
 
 // Stop stops the elevator
 func Stop() {
+	mutex.Lock()
 	C.elev_set_motor_direction(0)
+	mutex.Unlock()
 }
 
 // FloorListener sends event on floor update
@@ -133,7 +170,9 @@ func StopButtonListener(ch chan<- bool) {
 	var stopButtonState bool
 
 	for {
+		mutex.Lock()
 		newState := C.elev_get_stop_signal() != 0
+		mutex.Unlock()
 		if newState != stopButtonState {
 			stopButtonState = newState
 
@@ -154,7 +193,9 @@ func FloorButtonListener(ch chan<- ButtonEvent) {
 	for {
 		for direction := DirectionUp; direction <= DirectionNone; direction++ {
 			for floor := Floor(0); floor < NumFloors; floor++ {
+				mutex.Lock()
 				newState := C.elev_get_button_signal(C.elev_button_type_t(direction), C.int(floor)) != 0
+				mutex.Unlock()
 				if newState != floorButtonState[direction][floor] {
 					floorButtonState[direction][floor] = newState
 
@@ -170,28 +211,3 @@ func FloorButtonListener(ch chan<- ButtonEvent) {
 		}
 	}
 }
-
-// TODO: Should this be a separate one?
-// CommandButtonListener listens for... command buttons
-/*
-func CommandButtonListener(ch chan<- Floor) {
-	var commandButtonState [NumFloors]bool
-
-	for {
-		for floor := Floor(0); floor < NumFloors; floor++ {
-			newState := C.elev_get_button_signal(C.elev_button_type_t(DirectionNone), C.int(floor)) != 0
-			if newState != commandButtonState[floor] {
-				commandButtonState[floor] = newState
-
-				// Only dispatch an event if it's pressed
-				if newState {
-					log.Debug("Command buttonf for floor ", floor, " pressed")
-					ch <- floor
-				} else {
-					log.Bullshit("Command button for floor ", floor, " released")
-				}
-			}
-		}
-	}
-}
-*/

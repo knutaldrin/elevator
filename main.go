@@ -4,44 +4,16 @@ import (
 	"flag"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
 
 	"github.com/knutaldrin/elevator/driver"
 	"github.com/knutaldrin/elevator/log"
 	"github.com/knutaldrin/elevator/net"
-	"github.com/knutaldrin/elevator/queue"
+	"github.com/knutaldrin/elevator/newq"
 )
 
-//Utilities
-func goUp() {
-	driver.RunUp()
-	queue.SetDirStatus(driver.DirectionUp)
-}
-
-func goDown() {
-	driver.RunDown()
-	queue.SetDirStatus(driver.DirectionDown)
-}
-
-func stop() {
-	driver.Stop()
-	queue.SetDirStatus(driver.DirectionNone)
-}
-
-// doorPiccolo should be spawned as a goroutine and handles stopping and opening the door
-func doorPiccolo(nextDirCh chan<- driver.Direction) {
-	log.Info("Stopped at floor")
-	driver.OpenDoor()
-	log.Info("Door open")
-	time.Sleep(2 * time.Second)
-	driver.CloseDoor()
-	log.Info("Door closed")
-	queue.NextDir(nextDirCh)
-}
-
-//MAAAAAAAAAAAAAAAAAAAAAAIN
+// fuck main
 func main() {
 
 	id := flag.Uint("id", 1337, "Elevator ID")
@@ -53,9 +25,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	currentDirection := driver.DirectionNone
+	lastFloor := driver.Floor(0)
+
 	// Init driver and make sure elevator is at a floor
 	driver.Init()
-	queue.InitFloor(driver.Reset())
+
+	lastFloor = driver.Reset()
+	newq.Update(lastFloor)
 
 	floorCh := make(chan driver.Floor)
 	go driver.FloorListener(floorCh)
@@ -66,14 +43,11 @@ func main() {
 	floorBtnCh := make(chan driver.ButtonEvent)
 	go driver.FloorButtonListener(floorBtnCh)
 
-	orderSendCh := make(chan net.OrderMessage)
 	orderReceiveCh := make(chan net.OrderMessage)
-	go net.Handler(orderSendCh, orderReceiveCh)
+	go net.InitAndHandle(orderReceiveCh)
 
-	orderToQueueCh := make(chan net.OrderMessage)
-	go queue.Manager(orderToQueueCh, *id)
-
-	nextDirCh := make(chan driver.Direction)
+	timeoutCh := make(chan bool)
+	newq.SetTimeoutCh(timeoutCh)
 
 	// Oh, God almighty, please spare our ears
 	sigtermCh := make(chan os.Signal)
@@ -84,38 +58,27 @@ func main() {
 		os.Exit(0)
 	}(sigtermCh)
 
-	go queue.NextDir(nextDirCh)
-
 	for {
-		log.Bullshit("Selecting")
 		select {
 		case fl := <-floorCh:
-			if queue.ShouldStopAtFloor(fl) {
-				stop()
-				go doorPiccolo(nextDirCh)
+			newq.Update(fl)
+			if newq.ShouldStop(fl) {
+				driver.Stop()
+				newq.ClearOrder(fl, currentDirection)
+				log.Debug("Stopped at floor ", fl)
+				// TODO: Open doors not blockking, so people can still press buttons
+				driver.OpenDoor()
+				time.Sleep(1 * time.Second)
+				driver.CloseDoor()
 			}
 
 		case btn := <-floorBtnCh:
-			if btn.Dir == driver.DirectionDown || btn.Dir == driver.DirectionUp {
-				orderToQueueCh <- net.OrderMessage{Type: net.NewOrder, Floor: btn.Floor, Direction: btn.Dir}
-				// Send network message
-				orderSendCh <- net.OrderMessage{Type: net.NewOrder, Floor: btn.Floor, Direction: btn.Dir}
-			} else {
-				orderToQueueCh <- net.OrderMessage{Type: net.InternalOrder, Floor: btn.Floor, Direction: driver.DirectionNone}
-				log.Info("Internal order for floor " + strconv.Itoa(int(btn.Floor)))
-				driver.ButtonLightOn(btn.Floor, btn.Dir)
-			}
+			newq.NewOrder(btn.Floor, btn.Dir)
+			driver.Run(newq.NextDirection())
 
-		case dir := <-nextDirCh:
-			switch dir {
-			case driver.DirectionUp:
-				goUp()
-			case driver.DirectionDown:
-				goDown()
-			case driver.DirectionNone:
-				stop()
-				go doorPiccolo(nextDirCh)
-			}
+		case <-timeoutCh:
+			currentDirection = newq.NextDirection()
+			driver.Run(currentDirection)
 		}
 	}
 }
