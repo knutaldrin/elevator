@@ -63,62 +63,31 @@ func strToOrder(str string) OrderMessage {
 
 }
 
+var udpSendCh, udpRecvCh chan udp.Udp_message
+
 const LPORT = 13376
 const BPORT = 13377
 const MSGLEN = 8
 
-// Handles communication with other elevators
-func Handler(send <-chan OrderMessage, receive chan<- OrderMessage) {
+func SendOrder(order OrderMessage) {
+	str := orderToStr(order)
+	log.Debug("Sending message: ", str)
+	udpSendCh <- udp.Udp_message{Raddr: "broadcast", Data: str}
+}
+
+func InitAndHandle(receiveCh chan<- OrderMessage) {
 	udpSendCh := make(chan udp.Udp_message)
 	udpRecvCh := make(chan udp.Udp_message)
 
 	udp.Udp_init(LPORT, BPORT, MSGLEN, udpSendCh, udpRecvCh)
 
 	for {
-		select {
-		case msg := <-udpRecvCh:
-			if msg.Length != 8 { // Disregard messages not 8 in length
-				log.Warning("Non-8-byte message received")
-				continue
-			}
-
-			order := strToOrder(msg.Data)
-
-			// TODO: Disregard messages coming from here
-
-			switch order.Type {
-			case NewOrder:
-				// TODO: Do something sensible
-				dir := "up"
-				if string(msg.Data[5]) == "1" {
-					dir = "down"
-				}
-				log.Info("New order: floor ", string(msg.Data[4]), ", ", dir)
-				break
-
-			case AcceptedOrder:
-				dir := "up"
-				if string(msg.Data[5]) == "1" {
-					dir = "down"
-				}
-				log.Info("Accepted order: floor ", string(msg.Data[4]), ", ", dir)
-				break
-
-			case CompletedOrder:
-				dir := "up"
-				if string(msg.Data[5]) == "1" {
-					dir = "down"
-				}
-				log.Info("Completed order: floor ", string(msg.Data[4]), ", ", dir)
-			}
-
-		case order := <-send:
-
-			//str := string(order.Type) + strconv.Itoa(int(order.Floor)) + strconv.Itoa(int(order.Direction))
-			str := orderToStr(order)
-			log.Debug("Sending message: ", str)
-			udpSendCh <- udp.Udp_message{Raddr: "broadcast", Data: str}
+		msg := <-udpRecvCh
+		if msg.Length != 8 { // Disregard messages not 8 in length
+			log.Warning("Non-8-byte message received")
+			continue
 		}
+		order := strToOrder(msg.Data)
+		receiveCh <- order
 	}
-
 }
