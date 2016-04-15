@@ -12,7 +12,7 @@ import (
 
 const timeoutDelay = time.Second * 20
 
-var shouldStop [2][driver.NumFloors]bool
+var shouldStop [3][driver.NumFloors]bool
 
 type order struct {
 	floor driver.Floor
@@ -35,12 +35,19 @@ func calculateTimeout(floor driver.Floor, dir driver.Direction) time.Duration {
 	return time.Second // TODO: Be sensible
 }
 
+func getOrder(floor driver.Floor, dir driver.Direction) *order {
+	for o := pendingOrders.Front(); o != nil; o.Next() {
+		return o.Value.(*order)
+	}
+	return nil
+}
+
 func Update(floor driver.Floor) {
 	currentFloor = floor
 }
 
 func ShouldStop(floor driver.Floor) bool {
-	return shouldStop[currentDir][floor]
+	return shouldStop[currentDir][floor] || shouldStop[driver.DirectionNone][floor]
 }
 
 // NextDirection gives and sets next direction
@@ -82,8 +89,9 @@ func NextDirection() driver.Direction {
 // NewOrder locally or remotely
 func NewOrder(floor driver.Floor, dir driver.Direction) {
 	if dir == driver.DirectionNone { // From inside the elevator
-		shouldStop[driver.DirectionUp][floor] = true
-		shouldStop[driver.DirectionDown][floor] = true
+		//shouldStop[driver.DirectionUp][floor] = true
+		//shouldStop[driver.DirectionDown][floor] = true
+		shouldStop[driver.DirectionNone][floor] = true
 
 		// TODO: Save to log
 	} else { // From external panel on this or some other elevator
@@ -92,7 +100,13 @@ func NewOrder(floor driver.Floor, dir driver.Direction) {
 			floor: floor,
 			dir:   dir,
 			timer: time.AfterFunc(calculateTimeout(floor, dir), func() {
-				shouldStop[dir][floor] = true
+				if floor == 0 {
+					shouldStop[driver.DirectionUp][floor] = true
+				} else if floor == driver.NumFloors-1 {
+					shouldStop[driver.DirectionDown][floor] = true
+				} else {
+					shouldStop[dir][floor] = true
+				}
 				if currentDir == driver.DirectionNone {
 					// Ping
 					timeoutCh <- true
@@ -102,18 +116,23 @@ func NewOrder(floor driver.Floor, dir driver.Direction) {
 		}
 
 		pendingOrders.PushBack(&o)
+		driver.ButtonLightOn(floor, dir)
 	}
-	driver.ButtonLightOn(floor, dir)
 }
 
 // OrderAcceptedRemotely yay!
 func OrderAcceptedRemotely(floor driver.Floor, dir driver.Direction) {
 	// Algorithmically excellent searching
+	/*
 	for o := pendingOrders.Front(); o != nil; o.Next() {
 		v := o.Value.(*order)
 		if v.floor == floor && v.dir == dir {
-			v.timer.Reset(timeoutDelay + calculateTimeout(floor, dir))
+		*/
+		o := getOrder(floor, dir)
+		if o != nil {
+			o.timer.Reset(timeoutDelay + calculateTimeout(floor, dir))
 		}
+		//}
 	}
 
 	// Already completed? Maybe a late package or wtf
@@ -122,15 +141,22 @@ func OrderAcceptedRemotely(floor driver.Floor, dir driver.Direction) {
 
 // ClearOrder means an order is completed (either remotely or locally)
 func ClearOrder(floor driver.Floor, dir driver.Direction) {
+	// Pop from queue
+	o := getOrder(floor, dir)
+	if o != nil {
+		o.timer.Stop()
+		pendingOrders.Remove(o)
+	}
+
+	// Will never happen
 	if dir == driver.DirectionNone {
 		// Clear both
 		// TODO: Don't, just clear the one in direction of travel
-		shouldStop[driver.DirectionUp][floor] = false
-		shouldStop[driver.DirectionDown][floor] = false
-		driver.ButtonLightOff(floor, driver.DirectionUp)
-		driver.ButtonLightOff(floor, driver.DirectionDown)
+		shouldStop[currentDir][floor] = false
+		driver.ButtonLightOff(floor, currentDir)
 	} else {
 		shouldStop[dir][floor] = false
+		shouldStop[driver.DirectionNone][floor] = false
 		driver.ButtonLightOff(floor, dir)
 	}
 	// Turn off inside too
