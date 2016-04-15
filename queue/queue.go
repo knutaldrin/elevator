@@ -153,6 +153,11 @@ func generateTimeout(job Job) time.Time {
 	return time.Now().Add(d)
 }
 
+//InitFloor status
+func InitFloor(f driver.Floor) {
+	floorStatus = f
+}
+
 //Manager should be spawned as a goroutine and manages the work queues.
 func Manager(received <-chan net.OrderMessage, id uint) {
 	log.Debug("Initializing Queueueueueue manager")

@@ -56,7 +56,7 @@ func main() {
 
 	// Init driver and make sure elevator is at a floor
 	driver.Init()
-	queue.ShouldStopAtFloor(driver.Reset())
+	queue.InitFloor(driver.Reset())
 
 	floorCh := make(chan driver.Floor)
 	go driver.FloorListener(floorCh)
