@@ -67,14 +67,14 @@ func isInQueue(queue []Job, job Job) bool {
 
 //addJob to a queue. Returns resulting queue.
 func addJob(queue []Job, job Job) []Job {
+
 	if !isInQueue(queue, job) {
 		newQueue := append(queue, job)
 		log.Debug("Added job: Floor, Direction: ", job.Floor, ", ", job.Direction)
-		driver.ButtonLightOn(job.Floor, job.Direction)
-		log.Debug("newQueue is: ", newQueue)
+		log.Debug("Queue is now: ", queue)
 		return newQueue
 	}
-	log.Debug("Queue is: ", queue)
+
 	return queue
 }
 
@@ -86,9 +86,9 @@ func removeJob(queue []Job, job Job) []Job {
 			newQueue = append(newQueue, queue[i])
 		} else {
 			log.Debug("Removed job: Floor, Direction: ", job.Floor, ", ", job.Direction)
+			driver.ButtonLightOff(job.Floor, job.Direction)
 		}
 	}
-	driver.ButtonLightOn(job.Floor, job.Direction)
 	return newQueue
 }
 
@@ -153,7 +153,7 @@ func generateTimeout(job Job) time.Time {
 	return time.Now().Add(d)
 }
 
-//InitFloor status
+//InitFloor inits the queue floor status. Should only be called once.
 func InitFloor(f driver.Floor) {
 	floorStatus = f
 }
@@ -186,7 +186,7 @@ func Manager(received <-chan net.OrderMessage, id uint) {
 				myReceivedJobs = removeJob(myReceivedJobs, job)
 				break
 			case net.InternalOrder:
-				myActiveJobs = addJob(myReceivedJobs, job)
+				myActiveJobs = addJob(myActiveJobs, job)
 				break
 			}
 		}
@@ -205,7 +205,7 @@ func Manager(received <-chan net.OrderMessage, id uint) {
 //SetDirStatus sets the direction status
 func SetDirStatus(dir driver.Direction) {
 	dirStatus = dir
-	log.Debug("Queue dir status set to", dir)
+	log.Debug("Queue dir status set to ", dir)
 }
 
 //ShouldStopAtFloor reports the floor and direction of the elevator to the queue, and returns whether or not the current state is a target (if it should stop).
@@ -213,11 +213,13 @@ func SetDirStatus(dir driver.Direction) {
 func ShouldStopAtFloor(floor driver.Floor) bool {
 	floorStatus = floor
 	dirJob := makeJob(floor, dirStatus)
-	intJob := makeJob(floor, driver.DirectionNone) //Also checks for internal orders
+	intJob := makeJob(floor, driver.DirectionNone)
 	log.Debug("Status update to queue: Floor: ", floor, " Dir: ", dirStatus)
-	if isInQueue(myActiveJobs, dirJob) || isInQueue(myActiveJobs, intJob) {
+	if isInQueue(myActiveJobs, dirJob) || isInQueue(myActiveJobs, intJob) { //Also checks for internal orders (DirectionNone)
 		myActiveJobs = removeJob(myActiveJobs, intJob)
 		myActiveJobs = removeJob(myActiveJobs, dirJob)
+		log.Debug("Job to remove found")
+		log.Debug("Active queue is: ", myActiveJobs)
 		return true
 	}
 	log.Debug("No jobs removed")
@@ -230,6 +232,7 @@ func NextDir(ch chan<- driver.Direction) { //TODO Probably need to make more int
 	for {
 		if len(myActiveJobs) != 0 {
 			log.Info("Active job found")
+			log.Debug("Active queue is: ", myActiveJobs)
 			break
 		}
 	}
@@ -241,6 +244,7 @@ func NextDir(ch chan<- driver.Direction) { //TODO Probably need to make more int
 	} else {
 		ch <- driver.DirectionNone
 	}
+	log.Debug("Queue says: Go to ", myActiveJobs[0].Floor)
 }
 
 /*func main() { //debug
@@ -250,32 +254,32 @@ func NextDir(ch chan<- driver.Direction) { //TODO Probably need to make more int
 	fmt.Print(time.Now(), "\n")
 
 	log.Warning("QUEUE TEST\n")
-	fmt.Print(NextTarget(), "\n")
+
 	fmt.Print(makeJob(1, driver.DirectionUp), "\n")
 	myActiveJobs = addJob(myActiveJobs, makeJob(1, driver.DirectionUp))
 	fmt.Print(myActiveJobs, "\n")
-	fmt.Print(NextTarget(), "\n")
+
 	myActiveJobs = addJob(myActiveJobs, makeJob(3, driver.DirectionNone))
 	fmt.Print(myActiveJobs, "\n")
-	fmt.Print(NextTarget(), "\n")
+
 	myActiveJobs = addJob(myActiveJobs, makeJob(55, driver.DirectionUp))
 	fmt.Print(myActiveJobs, "\n")
-	fmt.Print(NextTarget(), "\n")
+
 	myActiveJobs = addJob(myActiveJobs, makeJob(1521, driver.DirectionUp))
 	fmt.Print(myActiveJobs, "\n")
-	fmt.Print(NextTarget(), "\n")
+
 	myActiveJobs = addJob(myActiveJobs, makeJob(55, driver.DirectionUp))
 	fmt.Print(myActiveJobs, "\n")
-	fmt.Print(NextTarget(), "\n")
+
 	myActiveJobs = removeJob(myActiveJobs, makeJob(55, driver.DirectionUp))
 	fmt.Print(myActiveJobs, "\n")
-	fmt.Print(NextTarget(), "\n")
+
 	fmt.Print(ShouldStopAtFloor(1), "\n")
 	fmt.Print(myActiveJobs, "\n")
-	fmt.Print(NextTarget(), "\n")
+
 	fmt.Print(ShouldStopAtFloor(1), "\n")
 	fmt.Print(myActiveJobs, "\n")
-	fmt.Print(NextTarget(), "\n")
+
 	fmt.Print("\n\n")
 
 }*/

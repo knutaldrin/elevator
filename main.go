@@ -32,7 +32,6 @@ func stop() {
 
 // doorPiccolo should be spawned as a goroutine and handles stopping and opening the door
 func doorPiccolo(nextDirCh chan<- driver.Direction) {
-	//ButtonLightOff(fl, DirectionNone)
 	log.Info("Stopped at floor")
 	driver.OpenDoor()
 	log.Info("Door open")
@@ -98,7 +97,7 @@ func main() {
 
 		case btn := <-floorBtnCh:
 			if btn.Dir == driver.DirectionDown || btn.Dir == driver.DirectionUp {
-				// TODO: Let queue know
+				orderToQueueCh <- net.OrderMessage{Type: net.NewOrder, Floor: btn.Floor, Direction: btn.Dir}
 				// Send network message
 				orderSendCh <- net.OrderMessage{Type: net.NewOrder, Floor: btn.Floor, Direction: btn.Dir}
 			} else {
