@@ -76,6 +76,10 @@ func main() {
 			newq.NewOrder(btn.Floor, btn.Dir)
 			driver.Run(newq.NextDirection())
 
+		case <-stopCh:
+			currentDirection = newq.NextDirection()
+			driver.Run(newq.NextDirection())
+
 		case <-timeoutCh:
 			currentDirection = newq.NextDirection()
 			driver.Run(currentDirection)
