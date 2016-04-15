@@ -203,12 +203,12 @@ func SetDirStatus(dir driver.Direction) {
 //If yes, the relevant job is completed and removed from the queue.
 func ShouldStopAtFloor(floor driver.Floor) bool {
 	floorStatus = floor
-	extJob := makeJob(floor, dirStatus)
+	dirJob := makeJob(floor, dirStatus)
 	intJob := makeJob(floor, driver.DirectionNone)
 	log.Debug("Status update to queue: Floor: ", floor, " Dir: ", dirStatus)
-	if isInQueue(myActiveJobs, extJob) || isInQueue(myActiveJobs, intJob) { //Also checks for internal orders (DirectionNone)
+	if isInQueue(myActiveJobs, dirJob) || isInQueue(myActiveJobs, intJob) { //Also checks for internal orders (DirectionNone)
 		myActiveJobs = removeJob(myActiveJobs, intJob)
-		myActiveJobs = removeJob(myActiveJobs, extJob)
+		myActiveJobs = removeJob(myActiveJobs, dirJob)
 		return true
 	}
 	log.Debug("No jobs removed")
