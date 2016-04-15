@@ -70,6 +70,7 @@ func addJob(queue []Job, job Job) []Job {
 	if !isInQueue(queue, job) {
 		queue = append(queue, job)
 		log.Debug("Added job: Floor, Direction: ", job.Floor, ", ", job.Direction)
+		log.Debug("Queue is now: ", queue)
 	}
 
 	return queue
