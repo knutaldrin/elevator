@@ -1,21 +1,62 @@
 package main
 
 import (
+	"flag"
 	"os"
 	"os/signal"
 	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/knutaldrin/elevator/driver"
 	"github.com/knutaldrin/elevator/log"
 	"github.com/knutaldrin/elevator/net"
+	"github.com/knutaldrin/elevator/queue"
 )
 
+//Utilities
+func goUp() {
+	driver.RunUp()
+	queue.SetDirStatus(driver.DirectionUp)
+}
+
+func goDown() {
+	driver.RunDown()
+	queue.SetDirStatus(driver.DirectionDown)
+}
+
+func stop() {
+	driver.Stop()
+	queue.SetDirStatus(driver.DirectionNone)
+}
+
+// doorPiccolo should be spawned as a goroutine and handles stopping and opening the door
+func doorPiccolo(nextDirCh chan<- driver.Direction) {
+	//ButtonLightOff(fl, DirectionNone)
+	log.Info("Stopped at floor")
+	driver.OpenDoor()
+	log.Info("Door open")
+	time.Sleep(2 * time.Second)
+	driver.CloseDoor()
+	log.Info("Door closed")
+	queue.NextDir(nextDirCh)
+}
+
+//MAAAAAAAAAAAAAAAAAAAAAAIN
 func main() {
+
+	id := flag.Uint("id", 1337, "Elevator ID")
+
+	flag.Parse()
+
+	if *id == 1337 {
+		log.Error("Elevator ID must be set")
+		os.Exit(1)
+	}
 
 	// Init driver and make sure elevator is at a floor
 	driver.Init()
-	driver.Reset()
+	queue.ShouldStopAtFloor(driver.Reset())
 
 	floorCh := make(chan driver.Floor)
 	go driver.FloorListener(floorCh)
@@ -30,10 +71,10 @@ func main() {
 	orderReceiveCh := make(chan net.OrderMessage)
 	go net.Handler(orderSendCh, orderReceiveCh)
 
-	orderQueueCh := make(chan net.OrderMessage)
-	//go queue.Manager(orderQueueCh)
+	orderToQueueCh := make(chan net.OrderMessage)
+	go queue.Manager(orderToQueueCh, *id)
 
-	driver.RunUp()
+	nextDirCh := make(chan driver.Direction)
 
 	// Oh, God almighty, please spare our ears
 	sigtermCh := make(chan os.Signal)
@@ -44,33 +85,37 @@ func main() {
 		os.Exit(0)
 	}(sigtermCh)
 
+	go queue.NextDir(nextDirCh)
+
 	for {
+		log.Bullshit("Selecting")
 		select {
 		case fl := <-floorCh:
-			// TODO: If correct floor, let queue know AND ->
-			// Turn off light and send network message
-			driver.ButtonLightOff(fl, driver.DirectionNone)
-			switch fl {
-			case 0:
-				driver.RunUp()
-			case 3:
-				driver.RunDown()
+			if queue.ShouldStopAtFloor(fl) {
+				stop()
+				go doorPiccolo(nextDirCh)
 			}
 
-		case stop := <-stopCh:
-			if stop {
-				driver.Stop()
-			}
-
-		case fl := <-floorBtnCh:
-			if fl.Dir == driver.DirectionDown || fl.Dir == driver.DirectionUp {
+		case btn := <-floorBtnCh:
+			if btn.Dir == driver.DirectionDown || btn.Dir == driver.DirectionUp {
 				// TODO: Let queue know
 				// Send network message
-				orderSendCh <- net.OrderMessage{Type: net.NewOrder, Floor: fl.Floor, Direction: fl.Dir}
+				orderSendCh <- net.OrderMessage{Type: net.NewOrder, Floor: btn.Floor, Direction: btn.Dir}
 			} else {
-				// TODO: Let queue know about the order
-				log.Info("Internal order for floor " + strconv.Itoa(int(fl.Floor)))
-				driver.ButtonLightOn(fl.Floor, fl.Dir)
+				orderToQueueCh <- net.OrderMessage{Type: net.InternalOrder, Floor: btn.Floor, Direction: driver.DirectionNone}
+				log.Info("Internal order for floor " + strconv.Itoa(int(btn.Floor)))
+				driver.ButtonLightOn(btn.Floor, btn.Dir)
+			}
+
+		case dir := <-nextDirCh:
+			switch dir {
+			case driver.DirectionUp:
+				goUp()
+			case driver.DirectionDown:
+				goDown()
+			case driver.DirectionNone:
+				stop()
+				go doorPiccolo(nextDirCh)
 			}
 		}
 	}
