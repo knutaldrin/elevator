@@ -1,4 +1,4 @@
-package main
+package queue
 
 import (
 	"fmt"
@@ -29,13 +29,14 @@ type OrderMessage struct {
 */
 
 const t time.Duration = 50 * time.Millisecond
+const baseOffsetMS uint = uint(50 / nMaxElev)
 
 const delay time.Duration = 15 * time.Second //Delay for order accepted by other elevator
 
 var idOffset time.Duration
 
 var floorStatus driver.Floor
-var dirStatus driver.Direction
+var dirStatus driver.Direction = driver.DirectionNone
 
 //Queues: Received jobs are jobs in the network. Active jobs are jobs accepted by the local elevator.
 var myReceivedJobs []Job
@@ -68,8 +69,9 @@ func isInQueue(queue []Job, job Job) bool {
 func addJob(queue []Job, job Job) []Job {
 	if !isInQueue(queue, job) {
 		queue = append(queue, job)
+		log.Debug("Added job: Floor, Direction: ", job.Floor, ", ", job.Direction)
 	}
-	log.Debug("Added job: Floor, Direction: ", job.Floor, ", ", job.Direction)
+
 	return queue
 }
 
@@ -115,8 +117,8 @@ func floorAbsDiff(a, b driver.Floor) int {
 
 //generateIDOffset generates the unique delay for each elevator to avoid multiple elevators taking the same order.
 //nMaxElev determines the "resolution" of the delay space.
-func generateIDOffset(id int8) time.Duration {
-	return time.Duration(float32(id)/float32(nMaxElev)) * t
+func generateIDOffset(id uint) time.Duration {
+	return time.Duration(id*baseOffsetMS) * time.Millisecond
 }
 
 //extendTimeout of a job in a queue by t
@@ -148,10 +150,10 @@ func generateTimeout(job Job) time.Time {
 }
 
 //Manager should be spawned as a goroutine and manages the work queues.
-func Manager(received <-chan net.OrderMessage, id int8) {
+func Manager(received <-chan net.OrderMessage, id uint) {
 	log.Debug("Initializing Queueueueueue manager")
 	idOffset = generateIDOffset(id)
-	log.Debug("Generated unique offset: %d Milliseconds", idOffset.Nanoseconds()/1000000)
+	log.Debug("Generated unique offset: ", idOffset)
 
 	//Queue init
 	myReceivedJobs = make([]Job, 0)
@@ -194,39 +196,51 @@ func Manager(received <-chan net.OrderMessage, id int8) {
 //SetDirStatus sets the direction status
 func SetDirStatus(dir driver.Direction) {
 	dirStatus = dir
+	log.Debug("Queue dir status set to", dir)
 }
 
-//StatusUpdate reports the floor and direction of the elevator to the queue, and returns whether or not the current state is a target (if it should stop).
+//ShouldStopAtFloor reports the floor and direction of the elevator to the queue, and returns whether or not the current state is a target (if it should stop).
 //If yes, the relevant job is completed and removed from the queue.
-func StatusUpdate(floor driver.Floor, dir driver.Direction) bool {
+func ShouldStopAtFloor(floor driver.Floor) bool {
 	floorStatus = floor
-	extJob := makeJob(floor, dir)
+	extJob := makeJob(floor, dirStatus)
 	intJob := makeJob(floor, driver.DirectionNone)
-	log.Debug("Status update to queue: Floor: ", floor, " Dir: ", dir)
+	log.Debug("Status update to queue: Floor: ", floor, " Dir: ", dirStatus)
 	if isInQueue(myActiveJobs, extJob) || isInQueue(myActiveJobs, intJob) { //Also checks for internal orders (DirectionNone)
 		myActiveJobs = removeJob(myActiveJobs, intJob)
 		myActiveJobs = removeJob(myActiveJobs, extJob)
 		return true
 	}
+	log.Debug("No jobs removed")
+	log.Debug("Active queue is: ", myActiveJobs)
 	return false
 }
 
-//NextTarget returns the next direction that should be targeted by the elevator
-func NextTarget() driver.Floor { //TODO Probably need to make more intelligent
-	defer func() {
-		if r := recover(); r != nil {
-			log.Info("Recovered in NextTarget: ", r)
+//NextDir should be spawned as a goroutine. Blocks until active queue has an entry.
+func NextDir(ch chan<- driver.Direction) { //TODO Probably need to make more intelligent
+	for {
+		if len(myActiveJobs) != 0 {
+			log.Info("Active job found")
+			break
 		}
-	}()
-	return myActiveJobs[0].Floor
+	}
+
+	if myActiveJobs[0].Floor > floorStatus {
+		ch <- driver.DirectionUp
+	} else if myActiveJobs[0].Floor < floorStatus {
+		ch <- driver.DirectionDown
+	} else {
+		ch <- driver.DirectionNone
+	}
 }
 
-func main() {
-	log.Error("UTIL TEST\n")
+/*func main() { //debug
+	log.Warning("UTIL TEST\n")
 	log.Info(floorAbsDiff(2, 2), "\n")
 	log.Info(floorAbsDiff(2, 4), "\n\n")
+	fmt.Print(time.Now(), "\n")
 
-	log.Error("QUEUE TEST\n")
+	log.Warning("QUEUE TEST\n")
 	fmt.Print(NextTarget(), "\n")
 	fmt.Print(makeJob(1, driver.DirectionUp), "\n")
 	myActiveJobs = addJob(myActiveJobs, makeJob(1, driver.DirectionUp))
@@ -247,12 +261,12 @@ func main() {
 	myActiveJobs = removeJob(myActiveJobs, makeJob(55, driver.DirectionUp))
 	fmt.Print(myActiveJobs, "\n")
 	fmt.Print(NextTarget(), "\n")
-	fmt.Print(StatusUpdate(1, driver.DirectionDown), "\n")
+	fmt.Print(ShouldStopAtFloor(1), "\n")
 	fmt.Print(myActiveJobs, "\n")
 	fmt.Print(NextTarget(), "\n")
-	fmt.Print(StatusUpdate(1, driver.DirectionUp), "\n")
+	fmt.Print(ShouldStopAtFloor(1), "\n")
 	fmt.Print(myActiveJobs, "\n")
 	fmt.Print(NextTarget(), "\n")
 	fmt.Print("\n\n")
 
-}
+}*/

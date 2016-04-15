@@ -22,7 +22,7 @@ const (
 	DirectionNone           = 2
 )
 
-// Floor is a floor. negative -> invalid
+// Floor is a floor. negative -> invalid (bitsize arbitrary)
 type Floor int16
 
 // ButtonEvent for use in button listener
@@ -41,12 +41,14 @@ func getFloor() Floor {
 
 // Init initializes the elevator, resets all lamps.
 func Init() {
+	log.Debug("Initializing driver")
 	C.elev_init()
 }
 
 // Reset makes sure the elevator is at a safe floor on startup
 // Blocking, should never be called when listeners are running
-func Reset() {
+func Reset() Floor {
+	log.Debug("Resetting floor")
 	currentFloor := getFloor()
 
 	if currentFloor == -1 {
@@ -64,6 +66,7 @@ func Reset() {
 		Stop()
 		// TODO: Open door?
 	}
+	return currentFloor
 }
 
 // OpenDoor opens the door
@@ -92,7 +95,6 @@ func RunUp() {
 		log.Error("Trying to go up from the top floor?!")
 		return
 	}
-	//queue.setDirStatus(1)
 	C.elev_set_motor_direction(1)
 }
 
