@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -32,6 +33,8 @@ func main() {
 	driver.Init()
 
 	lastFloor = driver.Reset()
+
+	fmt.Println("Hello")
 	newq.Update(lastFloor)
 
 	floorCh := make(chan driver.Floor)

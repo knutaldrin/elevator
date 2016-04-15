@@ -35,9 +35,9 @@ func calculateTimeout(floor driver.Floor, dir driver.Direction) time.Duration {
 	return time.Second // TODO: Be sensible
 }
 
-func getOrder(floor driver.Floor, dir driver.Direction) *order {
+func getOrder(floor driver.Floor, dir driver.Direction) *list.Element {
 	for o := pendingOrders.Front(); o != nil; o.Next() {
-		return o.Value.(*order)
+		return o
 	}
 	return nil
 }
@@ -47,7 +47,25 @@ func Update(floor driver.Floor) {
 }
 
 func ShouldStop(floor driver.Floor) bool {
-	return shouldStop[currentDir][floor] || shouldStop[driver.DirectionNone][floor]
+	reverse := true
+
+	for i := 0; i < driver.NumFloors; i++ {
+		if shouldStop[currentDir][floor] == true {
+			reverse = false
+			break
+		}
+	}
+
+	if reverse {
+		if currentDir == driver.DirectionDown {
+			return shouldStop[driver.DirectionUp][floor]
+		} else {
+			return shouldStop[driver.DirectionDown][floor]
+		}
+	}
+
+	return shouldStop[currentDir][floor] || shouldStop[driver.DirectionNone][floor] //||
+	//floor == 0 || floor == driver.NumFloors-1
 }
 
 // NextDirection gives and sets next direction
@@ -55,29 +73,37 @@ func NextDirection() driver.Direction {
 	// BOOOOOOILERPLATE
 	if currentDir == driver.DirectionUp {
 		for i := currentFloor + 1; i < driver.NumFloors; i++ {
-			if shouldStop[driver.DirectionUp][i] {
+			if shouldStop[driver.DirectionUp][i] || shouldStop[driver.DirectionNone][i] {
 				currentDir = driver.DirectionUp
 				return currentDir
 			}
 		}
 		// then the other way
-		for i := currentFloor - 1; i >= 0; i-- {
-			if shouldStop[driver.DirectionDown][i] {
-				currentDir = driver.DirectionDown
+		for i := driver.NumFloors - 1; i >= 0; i-- {
+			if shouldStop[driver.DirectionDown][i] || shouldStop[driver.DirectionNone][i] {
+				if driver.Floor(i) < currentFloor {
+					currentDir = driver.DirectionDown
+				} else {
+					currentDir = driver.DirectionUp
+				}
 				return currentDir
 			}
 		}
 	} else {
 		for i := currentFloor - 1; i >= 0; i-- {
-			if shouldStop[driver.DirectionDown][i] {
+			if shouldStop[driver.DirectionDown][i] || shouldStop[driver.DirectionNone][i] {
 				currentDir = driver.DirectionDown
 				return currentDir
 			}
 		}
 		// then the other way
-		for i := currentFloor + 1; i < driver.NumFloors; i++ {
-			if shouldStop[driver.DirectionUp][i] {
-				currentDir = driver.DirectionUp
+		for i := 0; i < driver.NumFloors; i++ {
+			if shouldStop[driver.DirectionUp][i] || shouldStop[driver.DirectionNone][i] {
+				if driver.Floor(i) < currentFloor {
+					currentDir = driver.DirectionDown
+				} else {
+					currentDir = driver.DirectionUp
+				}
 				return currentDir
 			}
 		}
@@ -100,13 +126,13 @@ func NewOrder(floor driver.Floor, dir driver.Direction) {
 			floor: floor,
 			dir:   dir,
 			timer: time.AfterFunc(calculateTimeout(floor, dir), func() {
-				if floor == 0 {
+				/*if floor == 0 {
 					shouldStop[driver.DirectionUp][floor] = true
 				} else if floor == driver.NumFloors-1 {
 					shouldStop[driver.DirectionDown][floor] = true
-				} else {
-					shouldStop[dir][floor] = true
-				}
+				} else {*/
+				shouldStop[dir][floor] = true
+				//}
 				if currentDir == driver.DirectionNone {
 					// Ping
 					timeoutCh <- true
@@ -124,16 +150,15 @@ func NewOrder(floor driver.Floor, dir driver.Direction) {
 func OrderAcceptedRemotely(floor driver.Floor, dir driver.Direction) {
 	// Algorithmically excellent searching
 	/*
-	for o := pendingOrders.Front(); o != nil; o.Next() {
-		v := o.Value.(*order)
-		if v.floor == floor && v.dir == dir {
-		*/
-		o := getOrder(floor, dir)
-		if o != nil {
-			o.timer.Reset(timeoutDelay + calculateTimeout(floor, dir))
-		}
-		//}
+		for o := pendingOrders.Front(); o != nil; o.Next() {
+			v := o.Value.(*order)
+			if v.floor == floor && v.dir == dir {
+	*/
+	o := getOrder(floor, dir).Value.(*order)
+	if o != nil {
+		o.timer.Reset(timeoutDelay + calculateTimeout(floor, dir))
 	}
+	//}
 
 	// Already completed? Maybe a late package or wtf
 	log.Warning("Non-existant job accepted remotely")
@@ -142,10 +167,10 @@ func OrderAcceptedRemotely(floor driver.Floor, dir driver.Direction) {
 // ClearOrder means an order is completed (either remotely or locally)
 func ClearOrder(floor driver.Floor, dir driver.Direction) {
 	// Pop from queue
-	o := getOrder(floor, dir)
-	if o != nil {
-		o.timer.Stop()
-		pendingOrders.Remove(o)
+	e := getOrder(floor, dir)
+	if e != nil {
+		e.Value.(*order).timer.Stop()
+		pendingOrders.Remove(e)
 	}
 
 	// Will never happen
