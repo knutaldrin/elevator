@@ -58,14 +58,14 @@ func Reset() Floor {
 		for {
 			currentFloor = getFloor()
 			if currentFloor != -1 {
-				log.Info("At floor ", currentFloor, ", ready for service")
-				setFloorIndicator(currentFloor)
 				break
 			}
 		}
 		Stop()
 		// TODO: Open door?
 	}
+	log.Info("At floor ", currentFloor, ", ready for service")
+	setFloorIndicator(currentFloor)
 	return currentFloor
 }
 
