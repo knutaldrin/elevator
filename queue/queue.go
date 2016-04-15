@@ -68,10 +68,13 @@ func isInQueue(queue []Job, job Job) bool {
 //addJob to a queue. Returns resulting queue.
 func addJob(queue []Job, job Job) []Job {
 	if !isInQueue(queue, job) {
-		queue = append(queue, job)
+		newQueue := append(queue, job)
 		log.Debug("Added job: Floor, Direction: ", job.Floor, ", ", job.Direction)
+		driver.ButtonLightOn(job.Floor, job.Direction)
+		log.Debug("newQueue is: ", newQueue)
+		return newQueue
 	}
-
+	log.Debug("Queue is: ", queue)
 	return queue
 }
 
@@ -85,6 +88,7 @@ func removeJob(queue []Job, job Job) []Job {
 			log.Debug("Removed job: Floor, Direction: ", job.Floor, ", ", job.Direction)
 		}
 	}
+	driver.ButtonLightOn(job.Floor, job.Direction)
 	return newQueue
 }
 
@@ -204,9 +208,9 @@ func SetDirStatus(dir driver.Direction) {
 func ShouldStopAtFloor(floor driver.Floor) bool {
 	floorStatus = floor
 	dirJob := makeJob(floor, dirStatus)
-	intJob := makeJob(floor, driver.DirectionNone)
+	intJob := makeJob(floor, driver.DirectionNone) //Also checks for internal orders
 	log.Debug("Status update to queue: Floor: ", floor, " Dir: ", dirStatus)
-	if isInQueue(myActiveJobs, dirJob) || isInQueue(myActiveJobs, intJob) { //Also checks for internal orders (DirectionNone)
+	if isInQueue(myActiveJobs, dirJob) || isInQueue(myActiveJobs, intJob) {
 		myActiveJobs = removeJob(myActiveJobs, intJob)
 		myActiveJobs = removeJob(myActiveJobs, dirJob)
 		return true
