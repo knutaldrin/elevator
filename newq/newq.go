@@ -2,6 +2,7 @@ package newq
 
 import (
 	"container/list"
+	"fmt"
 	"time"
 
 	"github.com/knutaldrin/elevator/driver"
@@ -40,6 +41,9 @@ func Update(floor driver.Floor) {
 }
 
 func ShouldStop(floor driver.Floor) bool {
+	if floor == 0 || floor == driver.NumFloors-1 {
+		return true
+	}
 	return shouldStop[currentDir][floor]
 }
 
@@ -50,13 +54,22 @@ func NextDirection() driver.Direction {
 		for i := currentFloor + 1; i < driver.NumFloors; i++ {
 			if shouldStop[driver.DirectionUp][i] {
 				currentDir = driver.DirectionUp
+				fmt.Println("a")
 				return currentDir
 			}
 		}
 		// then the other way
-		for i := currentFloor - 1; i >= 0; i-- {
+		for i := driver.NumFloors - 1; i >= 0; i-- {
 			if shouldStop[driver.DirectionDown][i] {
 				currentDir = driver.DirectionDown
+				fmt.Println("b")
+				return currentDir
+			}
+		}
+		for i := 0; i < int(currentFloor); i++ {
+			if shouldStop[driver.DirectionUp][i] {
+				currentDir = driver.DirectionUp
+				fmt.Println("c")
 				return currentDir
 			}
 		}
@@ -64,13 +77,22 @@ func NextDirection() driver.Direction {
 		for i := currentFloor - 1; i >= 0; i-- {
 			if shouldStop[driver.DirectionDown][i] {
 				currentDir = driver.DirectionDown
+				fmt.Println("d")
 				return currentDir
 			}
 		}
 		// then the other way
-		for i := currentFloor + 1; i < driver.NumFloors; i++ {
+		for i := 0; i < driver.NumFloors; i++ {
 			if shouldStop[driver.DirectionUp][i] {
 				currentDir = driver.DirectionUp
+				fmt.Println("e")
+				return currentDir
+			}
+		}
+		for i := driver.NumFloors - 1; i > int(currentFloor); i-- {
+			if shouldStop[driver.DirectionDown][i] {
+				currentDir = driver.DirectionDown
+				fmt.Println("f")
 				return currentDir
 			}
 		}
@@ -87,6 +109,12 @@ func NewOrder(floor driver.Floor, dir driver.Direction) {
 
 		// TODO: Save to log
 	} else { // From external panel on this or some other elevator
+
+		if floor == 0 {
+			dir = driver.DirectionDown
+		} else if floor == driver.NumFloors-1 {
+			dir = driver.DirectionUp
+		}
 
 		o := order{
 			floor: floor,
@@ -108,6 +136,11 @@ func NewOrder(floor driver.Floor, dir driver.Direction) {
 
 // OrderAcceptedRemotely yay!
 func OrderAcceptedRemotely(floor driver.Floor, dir driver.Direction) {
+	if floor == 0 {
+		dir = driver.DirectionUp
+	} else if floor == driver.NumFloors-1 {
+		dir = driver.DirectionUp
+	}
 	// Algorithmically excellent searching
 	for o := pendingOrders.Front(); o != nil; o.Next() {
 		v := o.Value.(*order)
@@ -122,14 +155,20 @@ func OrderAcceptedRemotely(floor driver.Floor, dir driver.Direction) {
 
 // ClearOrder means an order is completed (either remotely or locally)
 func ClearOrder(floor driver.Floor, dir driver.Direction) {
+
 	if dir == driver.DirectionNone {
 		// Clear both
 		// TODO: Don't, just clear the one in direction of travel
-		shouldStop[driver.DirectionUp][floor] = false
-		shouldStop[driver.DirectionDown][floor] = false
-		driver.ButtonLightOff(floor, driver.DirectionUp)
-		driver.ButtonLightOff(floor, driver.DirectionDown)
+		//shouldStop[driver.DirectionUp][floor] = false
+		shouldStop[currentDir][floor] = false
+		driver.ButtonLightOff(floor, currentDir)
+		//driver.ButtonLightOff(floor, driver.DirectionDown)
 	} else {
+		if floor == 0 {
+			dir = driver.DirectionDown
+		} else if floor == driver.NumFloors-1 {
+			dir = driver.DirectionUp
+		}
 		shouldStop[dir][floor] = false
 		driver.ButtonLightOff(floor, dir)
 	}
