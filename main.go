@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -25,6 +26,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	if *id > 9 {
+		log.Error("Id plz less than 10")
+		os.Exit(1)
+	}
+
+	fmt.Println("Id:", *id)
+
 	currentDirection := driver.DirectionNone
 	lastFloor := driver.Floor(0)
 
@@ -46,7 +54,7 @@ func main() {
 	go driver.FloorButtonListener(floorBtnCh)
 
 	orderReceiveCh := make(chan net.OrderMessage)
-	go net.InitAndHandle(orderReceiveCh)
+	go net.InitAndHandle(orderReceiveCh, *id)
 
 	timeoutCh := make(chan bool)
 	newq.SetTimeoutCh(timeoutCh)
