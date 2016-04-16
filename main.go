@@ -28,6 +28,8 @@ func main() {
 	currentDirection := driver.DirectionNone
 	lastFloor := driver.Floor(0)
 
+	doorOpen := false
+
 	// Init driver and make sure elevator is at a floor
 	driver.Init()
 
@@ -66,19 +68,29 @@ func main() {
 				driver.Stop()
 				newq.ClearOrder(fl, currentDirection)
 				log.Debug("Stopped at floor ", fl)
-				// TODO: Open doors not blockking, so people can still press buttons
-				driver.OpenDoor()
-				time.Sleep(1 * time.Second)
-				driver.CloseDoor()
+
+				go func() {
+					doorOpen = true
+					driver.OpenDoor()
+					time.Sleep(1 * time.Second)
+					doorOpen = false
+					driver.CloseDoor()
+					currentDirection = newq.NextDirection()
+					driver.Run(currentDirection)
+				}()
 			}
 
 		case btn := <-floorBtnCh:
 			newq.NewOrder(btn.Floor, btn.Dir)
-			driver.Run(newq.NextDirection())
+			if !doorOpen {
+				driver.Run(newq.NextDirection())
+			}
 
 		case <-timeoutCh:
 			currentDirection = newq.NextDirection()
-			driver.Run(currentDirection)
+			if !doorOpen {
+				driver.Run(currentDirection)
+			}
 		}
 	}
 }
