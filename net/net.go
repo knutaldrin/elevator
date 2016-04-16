@@ -21,25 +21,39 @@ import (
  * 2 chars: CRC-16 of the previous 6 bytes
  */
 
+/** NEW MESSAGE FORMAT
+ * Always 8 chars
+ *
+ * 2 chars: type
+ * * NW = New order
+ * * AC = Accepted order
+ * * CO = Completed order
+ * 1 char: Always 0
+ * 1 char: ID
+ * 1 char: floor (0-indexed)
+ * 1 char: direction (0: up, 1: down)
+ * 2 chars: CRC-16 of the previous 6 bytes
+ */
+
 //OrderType is an enum for communicating information about orders
 type OrderType string
 
 const (
-	InvalidOrder   OrderType = "INVL"
-	NewOrder                 = "NWOD"
-	AcceptedOrder            = "ACOD"
-	CompletedOrder           = "COOD"
-	InternalOrder            = "INOD"
+	InvalidOrder   OrderType = "IV"
+	NewOrder                 = "NW"
+	AcceptedOrder            = "AC"
+	CompletedOrder           = "CO"
 )
 
 type OrderMessage struct {
 	Type      OrderType
+	SenderId  uint
 	Floor     driver.Floor
 	Direction driver.Direction
 }
 
 func orderToStr(order OrderMessage) string {
-	str := string(order.Type) + strconv.Itoa(int(order.Floor)) + strconv.Itoa(int(order.Direction))
+	str := string(order.Type) + "0" + strconv.Itoa(int(order.SenderId)) + strconv.Itoa(int(order.Floor)) + strconv.Itoa(int(order.Direction))
 	crc := crc16.Crc16([]byte(str))
 	// HAXHAX bitshift and convert to byte slice -> string
 	str += string([]byte{byte((crc >> 8) & 0xff), byte(crc & 0xff)})
@@ -56,10 +70,11 @@ func strToOrder(str string) OrderMessage {
 		return OrderMessage{Type: InvalidOrder} // Probably corrupted
 	}
 
+	senderId, _ := strconv.Atoi(string(str[3]))
 	floorNum, _ := strconv.Atoi(string(str[4]))
-	dirNum, _ := strconv.Atoi(string(str[4]))
+	dirNum, _ := strconv.Atoi(string(str[5]))
 
-	return OrderMessage{Type: OrderType(str[:4]), Floor: driver.Floor(floorNum), Direction: driver.Direction(dirNum)}
+	return OrderMessage{Type: OrderType(str[:2]), SenderId: uint(senderId), Floor: driver.Floor(floorNum), Direction: driver.Direction(dirNum)}
 
 }
 
@@ -69,15 +84,20 @@ const LPORT = 13376
 const BPORT = 13377
 const MSGLEN = 8
 
+var elevatorId uint
+
 func SendOrder(order OrderMessage) {
+	order.SenderId = elevatorId
 	str := orderToStr(order)
 	log.Debug("Sending message: ", str)
 	udpSendCh <- udp.Udp_message{Raddr: "broadcast", Data: str}
 }
 
-func InitAndHandle(receiveCh chan<- OrderMessage) {
+func InitAndHandle(receiveCh chan<- OrderMessage, id uint) {
 	udpSendCh = make(chan udp.Udp_message)
 	udpRecvCh = make(chan udp.Udp_message)
+
+	elevatorId = id
 
 	udp.Udp_init(LPORT, BPORT, MSGLEN, udpSendCh, udpRecvCh)
 
@@ -88,6 +108,8 @@ func InitAndHandle(receiveCh chan<- OrderMessage) {
 			continue
 		}
 		order := strToOrder(msg.Data)
-		receiveCh <- order
+		if order.SenderId != elevatorId { // Don't loop
+			receiveCh <- order
+		}
 	}
 }
