@@ -12,6 +12,8 @@ import (
 // TODO TODO TODO: There is no sensible reason why lights should be controlled here
 
 const timeoutDelay = time.Second * 10
+const delayUnit = time.Millisecond * 20 // TODO: Decrease
+var elevID uint
 
 var shouldStop [2][driver.NumFloors]bool
 
@@ -28,17 +30,51 @@ var pendingOrders = list.New()
 
 var timeoutCh chan<- bool
 
+// SetID sets elevator ID
+func SetID(id uint) {
+	elevID = id
+}
+
 // SetTimeoutCh is a channel for the queue to notify when a timer runs out, in order to wake the elvator.
 func SetTimeoutCh(ch chan<- bool) {
 	timeoutCh = ch
 }
 
-func calculateTimeout(floor driver.Floor, dir driver.Direction) time.Duration {
-	if dir == driver.DirectionDown {
-		return time.Second
+func isAhead(floor driver.Floor) bool {
+	if currentDir == driver.DirectionUp {
+		return floor > currentFloor
+	} else if currentDir == driver.DirectionDown {
+		return floor < currentFloor
 	}
-	return time.Second * 2
-	// TODO: Be sensible
+
+	return false
+}
+
+func abs(a, b int16) int16 {
+	if a-b < 0 {
+		return b - a
+	}
+	return a - b
+}
+
+func calculateTimeout(floor driver.Floor, dir driver.Direction) time.Duration {
+	var delay time.Duration
+
+	if !isAhead(floor) {
+		delay += 15 * delayUnit
+	}
+
+	if dir != currentDir {
+		delay += 10 * delayUnit
+	}
+
+	delay += time.Duration(abs(int16(floor), int16(currentFloor))) * delayUnit
+
+	if currentDir == driver.DirectionNone {
+		delay = delayUnit * time.Duration(elevID)
+	}
+
+	return delay
 }
 
 // Update is called when the elevator passes a floor

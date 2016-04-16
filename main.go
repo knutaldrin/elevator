@@ -32,6 +32,7 @@ func main() {
 	}
 
 	fmt.Println("Id:", *id)
+	newq.SetID(*id)
 
 	currentDirection := driver.DirectionNone
 	lastFloor := driver.Floor(0)
