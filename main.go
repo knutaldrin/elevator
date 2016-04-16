@@ -50,10 +50,10 @@ func main() {
 	stopCh := make(chan bool)
 	go driver.StopButtonListener(stopCh)
 
-	floorBtnCh := make(chan driver.ButtonEvent)
+	floorBtnCh := make(chan driver.ButtonEvent, 8)
 	go driver.FloorButtonListener(floorBtnCh)
 
-	orderReceiveCh := make(chan net.OrderMessage)
+	orderReceiveCh := make(chan net.OrderMessage, 8)
 	go net.InitAndHandle(orderReceiveCh, *id)
 
 	timeoutCh := make(chan bool, 8)
