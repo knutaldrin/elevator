@@ -82,8 +82,24 @@ func main() {
 
 		case btn := <-floorBtnCh:
 			newq.NewOrder(btn.Floor, btn.Dir)
+			net.SendOrder(net.OrderMessage{Type: net.NewOrder, Floor: btn.Floor, Direction: btn.Dir})
 			if !doorOpen {
 				driver.Run(newq.NextDirection())
+			}
+
+		case o := <-orderReceiveCh:
+			switch o.Type {
+			case net.NewOrder:
+				newq.NewOrder(o.Floor, o.Direction)
+				if !doorOpen {
+					driver.Run(newq.NextDirection())
+				}
+
+			case net.AcceptedOrder:
+				newq.OrderAcceptedRemotely(o.Floor, o.Direction)
+
+			case net.CompletedOrder:
+				newq.ClearOrder(o.Floor, o.Direction)
 			}
 
 		case <-timeoutCh:
