@@ -65,7 +65,7 @@ func NextDirection() driver.Direction {
 		for i := currentFloor + 1; i < driver.NumFloors; i++ {
 			if shouldStop[driver.DirectionUp][i] {
 				//currentDir = driver.DirectionUp
-				currentDir = gotoDir(i)
+				currentDir = gotoDir(driver.Floor(i))
 				fmt.Println("a")
 				return currentDir
 			}
@@ -74,7 +74,7 @@ func NextDirection() driver.Direction {
 		for i := driver.NumFloors - 1; i >= 0; i-- {
 			if shouldStop[driver.DirectionDown][i] {
 				//currentDir = driver.DirectionDown
-				currentDir = gotoDir(i)
+				currentDir = gotoDir(driver.Floor(i))
 				fmt.Println("b")
 				return currentDir
 			}
@@ -82,7 +82,7 @@ func NextDirection() driver.Direction {
 		for i := 0; i < int(currentFloor); i++ {
 			if shouldStop[driver.DirectionUp][i] {
 				//currentDir = driver.DirectionUp
-				currentDir = gotoDir(i)
+				currentDir = gotoDir(driver.Floor(i))
 				fmt.Println("c")
 				return currentDir
 			}
@@ -91,7 +91,7 @@ func NextDirection() driver.Direction {
 		for i := currentFloor - 1; i >= 0; i-- {
 			if shouldStop[driver.DirectionDown][i] {
 				//currentDir = driver.DirectionDown
-				currentDir = gotoDir(i)
+				currentDir = gotoDir(driver.Floor(i))
 				fmt.Println("d")
 				return currentDir
 			}
@@ -100,7 +100,7 @@ func NextDirection() driver.Direction {
 		for i := 0; i < driver.NumFloors; i++ {
 			if shouldStop[driver.DirectionUp][i] {
 				//currentDir = driver.DirectionUp
-				currentDir = gotoDir(i)
+				currentDir = gotoDir(driver.Floor(i))
 				fmt.Println("e")
 				return currentDir
 			}
@@ -108,7 +108,7 @@ func NextDirection() driver.Direction {
 		for i := driver.NumFloors - 1; i > int(currentFloor); i-- {
 			if shouldStop[driver.DirectionDown][i] {
 				//currentDir = driver.DirectionDown
-				currentDir = gotoDir(i)
+				currentDir = gotoDir(driver.Floor(i))
 				fmt.Println("f")
 				return currentDir
 			}
