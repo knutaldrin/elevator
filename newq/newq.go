@@ -163,7 +163,7 @@ func ClearOrder(floor driver.Floor, dir driver.Direction) {
 		// TODO: Don't, just clear the one in direction of travel
 		//shouldStop[driver.DirectionUp][floor] = false
 		shouldStop[currentDir][floor] = false
-		driver.ButtonLightOff(floor, currentDir)
+		//driver.ButtonLightOff(floor, currentDir)
 		//driver.ButtonLightOff(floor, driver.DirectionDown)
 	} else {
 		if floor == 0 {
