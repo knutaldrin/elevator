@@ -96,6 +96,11 @@ func CloseDoor() {
 
 // ButtonLightOn turns on the corresponding lamp
 func ButtonLightOn(floor Floor, dir Direction) {
+	if floor == 0 && dir == DirectionDown {
+		dir = DirectionUp
+	} else if floor == NumFloors-1 && dir == DirectionUp {
+		dir = DirectionDown
+	}
 	mutex.Lock()
 	C.elev_set_button_lamp(C.elev_button_type_t(dir), C.int(floor), 1)
 	mutex.Unlock()
@@ -103,6 +108,11 @@ func ButtonLightOn(floor Floor, dir Direction) {
 
 // ButtonLightOff turns it off
 func ButtonLightOff(floor Floor, dir Direction) {
+	if floor == 0 && dir == DirectionDown {
+		dir = DirectionUp
+	} else if floor == NumFloors-1 && dir == DirectionUp {
+		dir = DirectionDown
+	}
 	mutex.Lock()
 	C.elev_set_button_lamp(C.elev_button_type_t(dir), C.int(floor), 0)
 	mutex.Unlock()
