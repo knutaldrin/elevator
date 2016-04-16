@@ -82,9 +82,13 @@ func main() {
 
 		case btn := <-floorBtnCh:
 			newq.NewOrder(btn.Floor, btn.Dir)
+			net.SendOrder(net.OrderMessage{Type: net.NewOrder, Floor: btn.Floor, Direction: btn.Dir})
 			if !doorOpen {
 				driver.Run(newq.NextDirection())
 			}
+
+		case o := <-orderReceiveCh:
+			log.Info("Received order type ", o.Type)
 
 		case <-timeoutCh:
 			currentDirection = newq.NextDirection()
