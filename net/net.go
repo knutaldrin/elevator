@@ -9,18 +9,6 @@ import (
 	"github.com/knutaldrin/elevator/net/udp"
 )
 
-/** MESSAGE FORMAT
- * Always 8 chars
- *
- * 4 chars: type
- * * NWOD = New order
- * * ACOD = Accepted order
- * * COOD = Completed order
- * 1 char: floor (0-indexed)
- * 1 char: direction (0: up, 1: down)
- * 2 chars: CRC-16 of the previous 6 bytes
- */
-
 /** NEW MESSAGE FORMAT
  * Always 8 chars
  *
@@ -28,7 +16,7 @@ import (
  * * NW = New order
  * * AC = Accepted order
  * * CO = Completed order
- * 1 char: Always 0
+ * 1 char: Always 0, reserved for future
  * 1 char: ID
  * 1 char: floor (0-indexed)
  * 1 char: direction (0: up, 1: down)
@@ -38,22 +26,24 @@ import (
 //OrderType is an enum for communicating information about orders
 type OrderType string
 
+// Enum of order types
 const (
 	InvalidOrder   OrderType = "IV"
-	NewOrder                 = "NW"
-	AcceptedOrder            = "AC"
-	CompletedOrder           = "CO"
+	NewOrder       OrderType = "NW"
+	AcceptedOrder  OrderType = "AC"
+	CompletedOrder OrderType = "CO"
 )
 
+// OrderMessage struct of a net message
 type OrderMessage struct {
 	Type      OrderType
-	SenderId  uint
+	SenderID  uint
 	Floor     driver.Floor
 	Direction driver.Direction
 }
 
 func orderToStr(order OrderMessage) string {
-	str := string(order.Type) + "0" + strconv.Itoa(int(order.SenderId)) + strconv.Itoa(int(order.Floor)) + strconv.Itoa(int(order.Direction))
+	str := string(order.Type) + "0" + strconv.Itoa(int(order.SenderID)) + strconv.Itoa(int(order.Floor)) + strconv.Itoa(int(order.Direction))
 	crc := crc16.Crc16([]byte(str))
 	// HAXHAX bitshift and convert to byte slice -> string
 	str += string([]byte{byte((crc >> 8) & 0xff), byte(crc & 0xff)})
@@ -70,34 +60,41 @@ func strToOrder(str string) OrderMessage {
 		return OrderMessage{Type: InvalidOrder} // Probably corrupted
 	}
 
-	senderId, _ := strconv.Atoi(string(str[3]))
+	senderID, _ := strconv.Atoi(string(str[3]))
 	floorNum, _ := strconv.Atoi(string(str[4]))
 	dirNum, _ := strconv.Atoi(string(str[5]))
 
-	return OrderMessage{Type: OrderType(str[:2]), SenderId: uint(senderId), Floor: driver.Floor(floorNum), Direction: driver.Direction(dirNum)}
+	return OrderMessage{Type: OrderType(str[:2]), SenderID: uint(senderID), Floor: driver.Floor(floorNum), Direction: driver.Direction(dirNum)}
 
 }
 
 var udpSendCh, udpRecvCh chan udp.Udp_message
 
+// LPORT Local listen port
 const LPORT = 13376
+
+// BPORT Broadcast listen port
 const BPORT = 13377
+
+// MSGLEN Network message length
 const MSGLEN = 8
 
-var elevatorId uint
+var elevatorID uint
 
+// SendOrder sends the parameter order struct to the network
 func SendOrder(order OrderMessage) {
-	order.SenderId = elevatorId
+	order.SenderID = elevatorID
 	str := orderToStr(order)
 	log.Debug("Sending message: ", str)
 	udpSendCh <- udp.Udp_message{Raddr: "broadcast", Data: str}
 }
 
+// InitAndHandle initializes network and handles receive
 func InitAndHandle(receiveCh chan<- OrderMessage, id uint) {
 	udpSendCh = make(chan udp.Udp_message, 8)
 	udpRecvCh = make(chan udp.Udp_message, 8)
 
-	elevatorId = id
+	elevatorID = id
 
 	udp.Udp_init(LPORT, BPORT, MSGLEN, udpSendCh, udpRecvCh)
 
@@ -108,8 +105,8 @@ func InitAndHandle(receiveCh chan<- OrderMessage, id uint) {
 			continue
 		}
 		order := strToOrder(msg.Data)
-		if order.SenderId != elevatorId { // Don't loop
-			log.Info("Received order: ID: ", order.SenderId, ", type: ", order.Type, ", floor: ", order.Floor)
+		if order.SenderID != elevatorID { // Don't loop
+			log.Info("Received order: ID: ", order.SenderID, ", type: ", order.Type, ", floor: ", order.Floor)
 			receiveCh <- order
 		}
 	}
