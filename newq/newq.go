@@ -41,6 +41,16 @@ func Update(floor driver.Floor) {
 	currentFloor = floor
 }
 
+func gotoDir(floor driver.Floor) driver.Direction {
+	if floor > currentFloor {
+		return driver.DirectionUp
+	} else if floor < currentFloor {
+		return driver.DirectionDown
+	}
+
+	return driver.DirectionNone
+}
+
 func ShouldStop(floor driver.Floor) bool {
 	if floor == 0 || floor == driver.NumFloors-1 {
 		return true
@@ -54,7 +64,8 @@ func NextDirection() driver.Direction {
 	if currentDir == driver.DirectionUp {
 		for i := currentFloor + 1; i < driver.NumFloors; i++ {
 			if shouldStop[driver.DirectionUp][i] {
-				currentDir = driver.DirectionUp
+				//currentDir = driver.DirectionUp
+				currentDir = gotoDir(i)
 				fmt.Println("a")
 				return currentDir
 			}
@@ -62,14 +73,16 @@ func NextDirection() driver.Direction {
 		// then the other way
 		for i := driver.NumFloors - 1; i >= 0; i-- {
 			if shouldStop[driver.DirectionDown][i] {
-				currentDir = driver.DirectionDown
+				//currentDir = driver.DirectionDown
+				currentDir = gotoDir(i)
 				fmt.Println("b")
 				return currentDir
 			}
 		}
 		for i := 0; i < int(currentFloor); i++ {
 			if shouldStop[driver.DirectionUp][i] {
-				currentDir = driver.DirectionUp
+				//currentDir = driver.DirectionUp
+				currentDir = gotoDir(i)
 				fmt.Println("c")
 				return currentDir
 			}
@@ -77,7 +90,8 @@ func NextDirection() driver.Direction {
 	} else {
 		for i := currentFloor - 1; i >= 0; i-- {
 			if shouldStop[driver.DirectionDown][i] {
-				currentDir = driver.DirectionDown
+				//currentDir = driver.DirectionDown
+				currentDir = gotoDir(i)
 				fmt.Println("d")
 				return currentDir
 			}
@@ -85,14 +99,16 @@ func NextDirection() driver.Direction {
 		// then the other way
 		for i := 0; i < driver.NumFloors; i++ {
 			if shouldStop[driver.DirectionUp][i] {
-				currentDir = driver.DirectionUp
+				//currentDir = driver.DirectionUp
+				currentDir = gotoDir(i)
 				fmt.Println("e")
 				return currentDir
 			}
 		}
 		for i := driver.NumFloors - 1; i > int(currentFloor); i-- {
 			if shouldStop[driver.DirectionDown][i] {
-				currentDir = driver.DirectionDown
+				//currentDir = driver.DirectionDown
+				currentDir = gotoDir(i)
 				fmt.Println("f")
 				return currentDir
 			}
