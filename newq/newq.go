@@ -34,7 +34,12 @@ func SetTimeoutCh(ch chan<- bool) {
 }
 
 func calculateTimeout(floor driver.Floor, dir driver.Direction) time.Duration {
-	return time.Second * 2 // TODO: Be sensible
+	if dir == driver.DirectionUp {
+		return time.Second
+	} else {
+		return time.Second * 2
+	}
+	//return time.Second // TODO: Be sensible
 }
 
 func Update(floor driver.Floor) {
@@ -160,16 +165,12 @@ func OrderAcceptedRemotely(floor driver.Floor, dir driver.Direction) {
 		dir = driver.DirectionUp
 	}
 	// Algorithmically excellent searching
-	log.Debug("OAR: Trying to find order")
 	for o := pendingOrders.Front(); o != nil; o = o.Next() {
 		v := o.Value.(*order)
 		if v.floor == floor && v.dir == dir {
-			log.Debug("Found order, trying to reset timer")
 			v.timer.Reset(timeoutDelay + calculateTimeout(floor, dir))
-			log.Debug("Successfully reset timer")
 			break
 		}
-		log.Debug("Did not find order")
 	}
 
 	// Already completed? Maybe a late package or wtf
@@ -194,6 +195,16 @@ func ClearOrder(floor driver.Floor, dir driver.Direction) {
 		}
 		shouldStop[dir][floor] = false
 		driver.ButtonLightOff(floor, dir)
+
+		// Clear from pendingOrders
+		for o := pendingOrders.Front(); o != nil; o = o.Next() {
+			v := o.Value.(*order)
+			if v.floor == floor && v.dir == dir {
+				v.timer.Stop()
+				pendingOrders.Remove(o)
+				break
+			}
+		}
 	}
 	// Turn off inside too
 	driver.ButtonLightOff(floor, driver.DirectionNone)
