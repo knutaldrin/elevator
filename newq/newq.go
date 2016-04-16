@@ -34,7 +34,7 @@ func SetTimeoutCh(ch chan<- bool) {
 }
 
 func calculateTimeout(floor driver.Floor, dir driver.Direction) time.Duration {
-	return time.Second // TODO: Be sensible
+	return time.Second * 2 // TODO: Be sensible
 }
 
 func Update(floor driver.Floor) {

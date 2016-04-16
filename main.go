@@ -56,7 +56,7 @@ func main() {
 	orderReceiveCh := make(chan net.OrderMessage)
 	go net.InitAndHandle(orderReceiveCh, *id)
 
-	timeoutCh := make(chan bool)
+	timeoutCh := make(chan bool, 8)
 	newq.SetTimeoutCh(timeoutCh)
 
 	// Oh, God almighty, please spare our ears
@@ -76,6 +76,7 @@ func main() {
 				driver.Stop()
 				newq.ClearOrder(fl, currentDirection)
 				log.Debug("Stopped at floor ", fl)
+				net.SendOrder(net.OrderMessage{Type: net.CompletedOrder, Floor: fl, Direction: currentDirection})
 
 				go func() {
 					doorOpen = true
@@ -98,12 +99,15 @@ func main() {
 		case o := <-orderReceiveCh:
 			switch o.Type {
 			case net.NewOrder:
+				log.Debug("New order, floor: ", o.Floor, ", dir: ", o.Direction)
 				newq.NewOrder(o.Floor, o.Direction)
 
 			case net.AcceptedOrder:
+				log.Debug("Remote accepted order, floor: ", o.Floor, ", dir: ", o.Direction)
 				newq.OrderAcceptedRemotely(o.Floor, o.Direction)
 
 			case net.CompletedOrder:
+				log.Debug("Remote completed order, floor: ", o.Floor, ", dir: ", o.Direction)
 				newq.ClearOrder(o.Floor, o.Direction)
 			}
 
