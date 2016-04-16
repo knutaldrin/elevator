@@ -2,7 +2,6 @@ package newq
 
 import (
 	"container/list"
-	"fmt"
 	"time"
 
 	"github.com/knutaldrin/elevator/driver"
@@ -12,7 +11,7 @@ import (
 
 // TODO TODO TODO: There is no sensible reason why lights should be controlled here
 
-const timeoutDelay = time.Second * 20
+const timeoutDelay = time.Second * 10
 
 var shouldStop [2][driver.NumFloors]bool
 
@@ -23,25 +22,26 @@ type order struct {
 }
 
 var currentFloor driver.Floor
-var currentDir driver.Direction
+var currentDir = driver.DirectionNone
 
 var pendingOrders = list.New()
 
 var timeoutCh chan<- bool
 
+// SetTimeoutCh is a channel for the queue to notify when a timer runs out, in order to wake the elvator.
 func SetTimeoutCh(ch chan<- bool) {
 	timeoutCh = ch
 }
 
 func calculateTimeout(floor driver.Floor, dir driver.Direction) time.Duration {
-	if dir == driver.DirectionUp {
+	if dir == driver.DirectionDown {
 		return time.Second
-	} else {
-		return time.Second * 2
 	}
-	//return time.Second // TODO: Be sensible
+	return time.Second * 2
+	// TODO: Be sensible
 }
 
+// Update is called when the elevator passes a floor
 func Update(floor driver.Floor) {
 	currentFloor = floor
 }
@@ -56,6 +56,7 @@ func gotoDir(floor driver.Floor) driver.Direction {
 	return driver.DirectionNone
 }
 
+// ShouldStop at the floor?
 func ShouldStop(floor driver.Floor) bool {
 	if floor == 0 || floor == driver.NumFloors-1 {
 		return true
@@ -69,52 +70,40 @@ func NextDirection() driver.Direction {
 	if currentDir == driver.DirectionUp {
 		for i := currentFloor + 1; i < driver.NumFloors; i++ {
 			if shouldStop[driver.DirectionUp][i] {
-				//currentDir = driver.DirectionUp
 				currentDir = gotoDir(driver.Floor(i))
-				fmt.Println("a")
 				return currentDir
 			}
 		}
 		// then the other way
 		for i := driver.NumFloors - 1; i >= 0; i-- {
 			if shouldStop[driver.DirectionDown][i] {
-				//currentDir = driver.DirectionDown
 				currentDir = gotoDir(driver.Floor(i))
-				fmt.Println("b")
 				return currentDir
 			}
 		}
 		for i := 0; i < int(currentFloor); i++ {
 			if shouldStop[driver.DirectionUp][i] {
-				//currentDir = driver.DirectionUp
 				currentDir = gotoDir(driver.Floor(i))
-				fmt.Println("c")
 				return currentDir
 			}
 		}
 	} else {
 		for i := currentFloor - 1; i >= 0; i-- {
 			if shouldStop[driver.DirectionDown][i] {
-				//currentDir = driver.DirectionDown
 				currentDir = gotoDir(driver.Floor(i))
-				fmt.Println("d")
 				return currentDir
 			}
 		}
 		// then the other way
 		for i := 0; i < driver.NumFloors; i++ {
 			if shouldStop[driver.DirectionUp][i] {
-				//currentDir = driver.DirectionUp
 				currentDir = gotoDir(driver.Floor(i))
-				fmt.Println("e")
 				return currentDir
 			}
 		}
 		for i := driver.NumFloors - 1; i > int(currentFloor); i-- {
 			if shouldStop[driver.DirectionDown][i] {
-				//currentDir = driver.DirectionDown
 				currentDir = gotoDir(driver.Floor(i))
-				fmt.Println("f")
 				return currentDir
 			}
 		}
@@ -169,7 +158,7 @@ func OrderAcceptedRemotely(floor driver.Floor, dir driver.Direction) {
 		v := o.Value.(*order)
 		if v.floor == floor && v.dir == dir {
 			v.timer.Reset(timeoutDelay + calculateTimeout(floor, dir))
-			break
+			return
 		}
 	}
 
@@ -180,13 +169,9 @@ func OrderAcceptedRemotely(floor driver.Floor, dir driver.Direction) {
 // ClearOrder means an order is completed (either remotely or locally)
 func ClearOrder(floor driver.Floor, dir driver.Direction) {
 
+	// TODO: Is this needed??? Probably not, remove plx
 	if dir == driver.DirectionNone {
-		// Clear both
-		// TODO: Don't, just clear the one in direction of travel
-		//shouldStop[driver.DirectionUp][floor] = false
 		shouldStop[currentDir][floor] = false
-		//driver.ButtonLightOff(floor, currentDir)
-		//driver.ButtonLightOff(floor, driver.DirectionDown)
 	} else {
 		if floor == 0 {
 			dir = driver.DirectionDown

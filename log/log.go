@@ -4,7 +4,7 @@ import "fmt"
 import cli "github.com/ivpusic/go-clicolor/clicolor"
 
 const debug = true
-const verbose = true
+const verbose = false
 
 // Error messages
 func Error(msg ...interface{}) {
