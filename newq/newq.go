@@ -167,6 +167,7 @@ func OrderAcceptedRemotely(floor driver.Floor, dir driver.Direction) {
 			log.Debug("Found order, trying to reset timer")
 			v.timer.Reset(timeoutDelay + calculateTimeout(floor, dir))
 			log.Debug("Successfully reset timer")
+			break
 		}
 	}
 
