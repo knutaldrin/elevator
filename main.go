@@ -65,6 +65,7 @@ func main() {
 	go func(ch <-chan os.Signal) {
 		<-ch
 		driver.Stop()
+		panic("CtrlC panic")
 		os.Exit(0)
 	}(sigtermCh)
 
