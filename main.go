@@ -96,7 +96,16 @@ func main() {
 			}
 
 		case o := <-orderReceiveCh:
-			log.Info("Received order type ", o.Type)
+			switch o.Type {
+			case net.NewOrder:
+				newq.NewOrder(o.Floor, o.Direction)
+
+			case net.AcceptedOrder:
+				newq.OrderAcceptedRemotely(o.Floor, o.Direction)
+
+			case net.CompletedOrder:
+				newq.ClearOrder(o.Floor, o.Direction)
+			}
 
 		case <-timeoutCh:
 			currentDirection = newq.NextDirection()

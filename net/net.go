@@ -109,6 +109,7 @@ func InitAndHandle(receiveCh chan<- OrderMessage, id uint) {
 		}
 		order := strToOrder(msg.Data)
 		if order.SenderId != elevatorId { // Don't loop
+			log.Info("Received order: ID: ", order.SenderId, ", type: ", order.Type, ", floor: ", order.Floor)
 			receiveCh <- order
 		}
 	}
