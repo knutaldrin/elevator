@@ -7,6 +7,7 @@ import (
 
 	"github.com/knutaldrin/elevator/driver"
 	"github.com/knutaldrin/elevator/log"
+	"github.com/knutaldrin/elevator/net"
 )
 
 // TODO TODO TODO: There is no sensible reason why lights should be controlled here
@@ -126,6 +127,7 @@ func NewOrder(floor driver.Floor, dir driver.Direction) {
 					timeoutCh <- true
 				}
 				// TODO: Send network message that we have accepted
+				net.SendOrder(net.OrderMessage{Type: net.AcceptedOrder, Floor: floor, Direction: dir})
 			}),
 		}
 
