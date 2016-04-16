@@ -43,6 +43,10 @@ type OrderMessage struct {
 }
 
 func orderToStr(order OrderMessage) string {
+	if order.Direction == driver.DirectionNone {
+		log.Error("Order cannot have no direction")
+	}
+
 	str := string(order.Type) + "0" + strconv.Itoa(int(order.SenderID)) + strconv.Itoa(int(order.Floor)) + strconv.Itoa(int(order.Direction))
 	crc := crc16.Crc16([]byte(str))
 	// HAXHAX bitshift and convert to byte slice -> string
