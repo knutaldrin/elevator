@@ -2,6 +2,7 @@ package newq
 
 import (
 	"container/list"
+	"container/ring"
 	"time"
 
 	"github.com/knutaldrin/elevator/driver"
@@ -42,46 +43,69 @@ func getOrder(floor driver.Floor, dir driver.Direction) *order {
 	return nil
 }
 
-func Update(floor driver.Floor) {
-	currentFloor = floor
-}
-
-func ShouldStop(floor driver.Floor) bool {
-	return shouldStop[currentDir][floor] || shouldStop[driver.DirectionNone][floor]
-}
-
-// NextDirection gives and sets next direction
-func NextDirection() driver.Direction {
-	// BOOOOOOILERPLATE
+func nextStop() driver.Floor {
 	if currentDir == driver.DirectionUp {
 		for i := currentFloor + 1; i < driver.NumFloors; i++ {
 			if shouldStop[driver.DirectionUp][i] {
-				currentDir = driver.DirectionUp
-				return currentDir
+				return Floor(i)
 			}
 		}
 		// then the other way
 		for i := currentFloor - 1; i >= 0; i-- {
 			if shouldStop[driver.DirectionDown][i] {
-				currentDir = driver.DirectionDown
-				return currentDir
+				return Floor(i)
+			}
+		}
+		// Then from bottom to currentDir
+		for i := 0; i < currentFloor; i++ {
+			if shouldStop[driver.DirectionUp][i] {
+				return Floor(i)
 			}
 		}
 	} else {
 		for i := currentFloor - 1; i >= 0; i-- {
 			if shouldStop[driver.DirectionDown][i] {
-				currentDir = driver.DirectionDown
-				return currentDir
+				return Floor(i)
 			}
 		}
 		// then the other way
 		for i := currentFloor + 1; i < driver.NumFloors; i++ {
 			if shouldStop[driver.DirectionUp][i] {
-				currentDir = driver.DirectionUp
-				return currentDir
+				return Floor(i)
+			}
+		}
+		// Then from top to currentDir
+		for i := driver.NumFloors -1; i > currentFloor; i-- {
+			if shouldStop[driver.DirectionDown][i] {
+				return Floor(i)
 			}
 		}
 	}
+
+	return currentFloor
+}
+
+func Update(floor driver.Floor) {
+	currentFloor = floor
+}
+
+func ShouldStop(floor driver.Floor) bool {
+	return nextStop == floor
+}
+
+// NextDirection gives and sets next direction
+func NextDirection() driver.Direction {
+	next := nextStop()
+	if next > currentFloor {
+		return driver.DirectionUp
+	} else if next < currentFloor {
+		return driver.DirectionDown
+	}
+
+	return driver.DirectionNone
+}
+
+	// Nope
 	currentDir = driver.DirectionNone
 	return currentDir
 }
@@ -137,6 +161,10 @@ func OrderAcceptedRemotely(floor driver.Floor, dir driver.Direction) {
 
 	// Already completed? Maybe a late package or wtf
 	log.Warning("Non-existant job accepted remotely")
+}
+
+func ClearLocal(floor driver.Floor) {
+
 }
 
 // ClearOrder means an order is completed (either remotely or locally)
