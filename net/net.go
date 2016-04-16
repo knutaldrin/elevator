@@ -94,8 +94,8 @@ func SendOrder(order OrderMessage) {
 }
 
 func InitAndHandle(receiveCh chan<- OrderMessage, id uint) {
-	udpSendCh = make(chan udp.Udp_message)
-	udpRecvCh = make(chan udp.Udp_message)
+	udpSendCh = make(chan udp.Udp_message, 8)
+	udpRecvCh = make(chan udp.Udp_message, 8)
 
 	elevatorId = id
 
