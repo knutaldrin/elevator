@@ -86,18 +86,6 @@ func NextDirection() driver.Direction {
 				fmt.Println("c")
 				return currentDir
 			}
-Øya
-Telefon: 73 52 66 66
-Klostergaten 21
-Åpningstider
-Mandag - Torsdag: 13:00 - 22:00
-Fredag - Lørdag: 13:00 - 23:00
-Søndag: 13:00 - 22:00
-Utkjøringstider
-Mandag - Torsdag: 15:00 - 21:30
-Fredag - Lørdag: 15:00 - 22:30
-Søndag: 15:00 - 21:30
-
 		}
 	} else {
 		for i := currentFloor - 1; i >= 0; i-- {
