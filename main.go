@@ -76,7 +76,7 @@ func main() {
 			newq.Update(fl)
 			if newq.ShouldStop(fl) {
 				driver.Stop()
-				newq.ClearOrder(fl, currentDirection)
+				newq.ClearOrderLocal(fl, currentDirection)
 				log.Debug("Stopped at floor ", fl)
 				net.SendOrder(net.OrderMessage{Type: net.CompletedOrder, Floor: fl, Direction: currentDirection})
 
@@ -93,9 +93,12 @@ func main() {
 
 		case btn := <-floorBtnCh:
 			newq.NewOrder(btn.Floor, btn.Dir)
-			net.SendOrder(net.OrderMessage{Type: net.NewOrder, Floor: btn.Floor, Direction: btn.Dir})
+			if btn.Dir != driver.DirectionNone {
+				net.SendOrder(net.OrderMessage{Type: net.NewOrder, Floor: btn.Floor, Direction: btn.Dir})
+			}
 			if !doorOpen {
-				driver.Run(newq.NextDirection())
+				currentDirection = newq.NextDirection()
+				driver.Run(currentDirection)
 			}
 
 		case o := <-orderReceiveCh:

@@ -12,10 +12,10 @@ import (
 // TODO TODO TODO: There is no sensible reason why lights should be controlled here
 
 const timeoutDelay = time.Second * 10
-const delayUnit = time.Millisecond * 20 // TODO: Decrease
+const delayUnit = time.Millisecond * 60 // TODO: Decrease
 var elevID uint
 
-var shouldStop [2][driver.NumFloors]bool
+var shouldStop [3][driver.NumFloors]bool
 
 type order struct {
 	floor driver.Floor
@@ -97,7 +97,7 @@ func ShouldStop(floor driver.Floor) bool {
 	if floor == 0 || floor == driver.NumFloors-1 {
 		return true
 	}
-	return shouldStop[currentDir][floor]
+	return shouldStop[currentDir][floor] || shouldStop[driver.DirectionNone][floor]
 }
 
 // NextDirection gives and sets next direction
@@ -105,40 +105,40 @@ func NextDirection() driver.Direction {
 	// BOOOOOOILERPLATE
 	if currentDir == driver.DirectionUp {
 		for i := currentFloor + 1; i < driver.NumFloors; i++ {
-			if shouldStop[driver.DirectionUp][i] {
+			if shouldStop[driver.DirectionUp][i] || shouldStop[driver.DirectionNone][i] {
 				currentDir = gotoDir(driver.Floor(i))
 				return currentDir
 			}
 		}
 		// then the other way
 		for i := driver.NumFloors - 1; i >= 0; i-- {
-			if shouldStop[driver.DirectionDown][i] {
+			if shouldStop[driver.DirectionDown][i] || shouldStop[driver.DirectionNone][i] {
 				currentDir = gotoDir(driver.Floor(i))
 				return currentDir
 			}
 		}
 		for i := 0; i < int(currentFloor); i++ {
-			if shouldStop[driver.DirectionUp][i] {
+			if shouldStop[driver.DirectionUp][i] || shouldStop[driver.DirectionNone][i] {
 				currentDir = gotoDir(driver.Floor(i))
 				return currentDir
 			}
 		}
 	} else {
 		for i := currentFloor - 1; i >= 0; i-- {
-			if shouldStop[driver.DirectionDown][i] {
+			if shouldStop[driver.DirectionDown][i] || shouldStop[driver.DirectionNone][i] {
 				currentDir = gotoDir(driver.Floor(i))
 				return currentDir
 			}
 		}
 		// then the other way
 		for i := 0; i < driver.NumFloors; i++ {
-			if shouldStop[driver.DirectionUp][i] {
+			if shouldStop[driver.DirectionUp][i] || shouldStop[driver.DirectionNone][i] {
 				currentDir = gotoDir(driver.Floor(i))
 				return currentDir
 			}
 		}
 		for i := driver.NumFloors - 1; i > int(currentFloor); i-- {
-			if shouldStop[driver.DirectionDown][i] {
+			if shouldStop[driver.DirectionDown][i] || shouldStop[driver.DirectionNone][i] {
 				currentDir = gotoDir(driver.Floor(i))
 				return currentDir
 			}
@@ -151,8 +151,8 @@ func NextDirection() driver.Direction {
 // NewOrder locally or remotely
 func NewOrder(floor driver.Floor, dir driver.Direction) {
 	if dir == driver.DirectionNone { // From inside the elevator
-		shouldStop[driver.DirectionUp][floor] = true
-		shouldStop[driver.DirectionDown][floor] = true
+		shouldStop[dir][floor] = true
+		driver.ButtonLightOn(floor, dir)
 
 		// TODO: Save to log
 	} else { // From external panel on this or some other elevator
@@ -202,31 +202,31 @@ func OrderAcceptedRemotely(floor driver.Floor, dir driver.Direction) {
 	log.Warning("Non-existant job accepted remotely")
 }
 
+func ClearOrderLocal(floor driver.Floor, dir driver.Direction) {
+	// Turn off inside too
+	shouldStop[driver.DirectionNone][floor] = false
+	driver.ButtonLightOff(floor, driver.DirectionNone)
+	dir = currentDir
+	ClearOrder(floor, dir)
+}
+
 // ClearOrder means an order is completed (either remotely or locally)
 func ClearOrder(floor driver.Floor, dir driver.Direction) {
+	if floor == 0 {
+		dir = driver.DirectionDown
+	} else if floor == driver.NumFloors-1 {
+		dir = driver.DirectionUp
+	}
+	shouldStop[dir][floor] = false
+	driver.ButtonLightOff(floor, dir)
 
-	// TODO: Is this needed??? Probably not, remove plx
-	if dir == driver.DirectionNone {
-		shouldStop[currentDir][floor] = false
-	} else {
-		if floor == 0 {
-			dir = driver.DirectionDown
-		} else if floor == driver.NumFloors-1 {
-			dir = driver.DirectionUp
-		}
-		shouldStop[dir][floor] = false
-		driver.ButtonLightOff(floor, dir)
-
-		// Clear from pendingOrders
-		for o := pendingOrders.Front(); o != nil; o = o.Next() {
-			v := o.Value.(*order)
-			if v.floor == floor && v.dir == dir {
-				v.timer.Stop()
-				pendingOrders.Remove(o)
-				break
-			}
+	// Clear from pendingOrders
+	for o := pendingOrders.Front(); o != nil; o = o.Next() {
+		v := o.Value.(*order)
+		if v.floor == floor && v.dir == dir {
+			v.timer.Stop()
+			pendingOrders.Remove(o)
+			break
 		}
 	}
-	// Turn off inside too
-	driver.ButtonLightOff(floor, driver.DirectionNone)
 }
