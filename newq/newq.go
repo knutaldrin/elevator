@@ -161,7 +161,7 @@ func OrderAcceptedRemotely(floor driver.Floor, dir driver.Direction) {
 	}
 	// Algorithmically excellent searching
 	log.Debug("OAR: Trying to find order")
-	for o := pendingOrders.Front(); o != nil; o.Next() {
+	for o := pendingOrders.Front(); o != nil; o = o.Next() {
 		v := o.Value.(*order)
 		if v.floor == floor && v.dir == dir {
 			log.Debug("Found order, trying to reset timer")
@@ -169,6 +169,7 @@ func OrderAcceptedRemotely(floor driver.Floor, dir driver.Direction) {
 			log.Debug("Successfully reset timer")
 			break
 		}
+		log.Debug("Did not find order")
 	}
 
 	// Already completed? Maybe a late package or wtf
