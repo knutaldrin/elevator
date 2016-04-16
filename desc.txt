@@ -4,7 +4,7 @@ Når knapp trykkes på panelet:
 -
  * Etasje
  * Timestamp
- * Alle heiser sender videre til man har mottatt sin egen pakke
+ * -> Broadcast
 
 - Svar: Hvis kan ta bestillingen, si avstand
 - Den nærmeste tar bestillingen
