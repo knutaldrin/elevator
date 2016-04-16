@@ -76,8 +76,8 @@ func SendOrder(order OrderMessage) {
 }
 
 func InitAndHandle(receiveCh chan<- OrderMessage) {
-	udpSendCh := make(chan udp.Udp_message)
-	udpRecvCh := make(chan udp.Udp_message)
+	udpSendCh = make(chan udp.Udp_message)
+	udpRecvCh = make(chan udp.Udp_message)
 
 	udp.Udp_init(LPORT, BPORT, MSGLEN, udpSendCh, udpRecvCh)
 
