@@ -44,6 +44,7 @@ func ImportInternalLog() {
 
 	for i := 0; i < len(intSlice); i++ {
 		shouldStop[driver.DirectionNone][i] = true
+		driver.ButtonLightOn(floor, driver.DirectionNone)
 	}
 }
 
