@@ -14,7 +14,6 @@ import (
 //bruker tekstfil/UTF-8 for enkel debugging
 
 const filename string = "OrderLog.txt"
-const nFloors int = 4
 
 //readFile leser loggen og returnerer innholdet som en int slice
 func readLog() []int {
