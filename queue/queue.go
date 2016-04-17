@@ -10,7 +10,7 @@ import (
 )
 
 const timeoutDelay = time.Second * 10
-const delayUnit = time.Millisecond * 50
+const delayUnit = time.Millisecond * 60
 
 var elevID uint
 
@@ -44,8 +44,8 @@ func ImportInternalLog() {
 	intSlice := ReadLog()
 
 	for i := 0; i < len(intSlice); i++ {
-		shouldStop[driver.DirectionNone][i] = true
-		driver.ButtonLightOn(driver.Floor(i), driver.DirectionNone)
+		shouldStop[driver.DirectionNone][intSlice[i]] = true
+		driver.ButtonLightOn(driver.Floor(intSlice[i]), driver.DirectionNone)
 	}
 }
 
@@ -182,6 +182,7 @@ func NewOrder(floor driver.Floor, dir driver.Direction) {
 				}
 				// Send network message that we have accepted
 				net.SendOrder(net.OrderMessage{Type: net.AcceptedOrder, Floor: floor, Direction: dir})
+				log.Info("Accepted order for floor ", floor)
 			}),
 		}
 
