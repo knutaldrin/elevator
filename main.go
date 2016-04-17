@@ -69,12 +69,11 @@ func main() {
 	go func(ch <-chan os.Signal) {
 		<-ch
 		driver.Stop()
-		//panic("CtrlC panic")
 		os.Exit(0)
 	}(sigtermCh)
 
+	// Ping timeout so we start in case we have logged orders from a previous crash
 	timeoutCh <- true
-	//fmt.Println("pinging")
 
 	for {
 		select {
