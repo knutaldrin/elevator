@@ -9,6 +9,7 @@ package driver
 import "C"
 import (
 	"sync"
+	"time"
 
 	"github.com/knutaldrin/elevator/log"
 )
@@ -75,7 +76,9 @@ func Reset() Floor {
 			}
 		}
 		Stop()
-		// TODO: Open door?
+		OpenDoor()
+		time.Sleep(time.Second)
+		CloseDoor()
 	}
 	return currentFloor
 }

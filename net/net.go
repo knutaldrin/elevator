@@ -84,9 +84,8 @@ var elevatorID uint
 // SendOrder sends the parameter order struct to the network
 func SendOrder(order OrderMessage) {
 	if order.Direction == driver.DirectionNone {
-		// TODO: Return instead of panicking
-		log.Error("Order cannot have no direction")
-		panic("OMG NO DIR")
+		log.Warning("Transmitted order cannot have no direction")
+		return
 	}
 	order.SenderID = elevatorID
 	str := orderToStr(order)

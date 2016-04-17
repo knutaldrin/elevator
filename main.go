@@ -34,7 +34,7 @@ func main() {
 	fmt.Println("Id:", *id)
 	queue.SetID(*id)
 
-	currentDirection := driver.DirectionNone
+	currentDirection := driver.DirectionDown
 	lastFloor := driver.Floor(0)
 
 	doorOpen := false
@@ -46,6 +46,7 @@ func main() {
 
 	lastFloor = driver.Reset()
 	queue.Update(lastFloor)
+	queue.ClearOrderLocal(lastFloor, currentDirection)
 
 	floorCh := make(chan driver.Floor)
 	go driver.FloorListener(floorCh)
@@ -71,6 +72,9 @@ func main() {
 		//panic("CtrlC panic")
 		os.Exit(0)
 	}(sigtermCh)
+
+	timeoutCh <- true
+	//fmt.Println("pinging")
 
 	for {
 		select {

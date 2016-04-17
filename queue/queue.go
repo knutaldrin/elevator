@@ -10,7 +10,8 @@ import (
 )
 
 const timeoutDelay = time.Second * 10
-const delayUnit = time.Millisecond * 60 // TODO: Decrease
+const delayUnit = time.Millisecond * 50
+
 var elevID uint
 
 var shouldStop [3][driver.NumFloors]bool
@@ -40,11 +41,11 @@ func SetTimeoutCh(ch chan<- bool) {
 
 //ImportInternalLog imports any locally saved internal orders to the active queue. Called at init.
 func ImportInternalLog() {
-	intSlice := queue.ReadLog()
+	intSlice := ReadLog()
 
 	for i := 0; i < len(intSlice); i++ {
 		shouldStop[driver.DirectionNone][i] = true
-		driver.ButtonLightOn(floor, driver.DirectionNone)
+		driver.ButtonLightOn(driver.Floor(i), driver.DirectionNone)
 	}
 }
 
@@ -161,7 +162,7 @@ func NewOrder(floor driver.Floor, dir driver.Direction) {
 	if dir == driver.DirectionNone { // From inside the elevator
 		shouldStop[dir][floor] = true
 		driver.ButtonLightOn(floor, dir)
-		queue.AddToLog(int(floor)) //Log internal order to file
+		AddToLog(int(floor)) //Log internal order to file
 	} else { // From external panel on this or some other elevator
 
 		if floor == 0 {
@@ -215,7 +216,7 @@ func ClearOrderLocal(floor driver.Floor, dir driver.Direction) {
 	shouldStop[driver.DirectionNone][floor] = false
 	driver.ButtonLightOff(floor, driver.DirectionNone)
 	dir = currentDir
-	queue.RemoveFromLog(int(floor))
+	RemoveFromLog(int(floor))
 	ClearOrder(floor, dir)
 }
 
