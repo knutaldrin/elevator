@@ -42,6 +42,8 @@ func main() {
 	// Init driver and make sure elevator is at a floor
 	driver.Init()
 
+	newq.ImportInternalLog()
+
 	lastFloor = driver.Reset()
 	newq.Update(lastFloor)
 

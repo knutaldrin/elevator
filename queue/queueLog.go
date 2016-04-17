@@ -15,8 +15,8 @@ import (
 
 const filename string = "OrderLog.txt"
 
-//readFile leser loggen og returnerer innholdet som en int slice
-func readLog() []int {
+//ReadLog leser loggen og returnerer innholdet som en int slice
+func ReadLog() []int {
 	file, err := os.Open(filename)
 	if err != nil {
 		log.Info(err)
@@ -59,8 +59,8 @@ func writeLog(ns []int) {
 	ioutil.WriteFile(filename, resultSlice, 0666)
 }
 
-//IsInLog is a boolean check of whether a floor is recorded in the log.
-func IsInLog(floor int) bool {
+//isInLog is a boolean check of whether a floor is recorded in the log.
+func isInLog(floor int) bool {
 	intSlice := readLog()
 	for i := 0; i < len(intSlice); i++ {
 		if floor == intSlice[i] {
@@ -83,8 +83,8 @@ func RemoveFromLog(floor int) {
 	writeLog(newSlice)
 }
 
-//AppendToLog adds a floor from the log file, if the floor is not already in the queue. If added, the file size increases by one character.
-func AppendToLog(floor int) {
+//AddToLog adds a floor from the log file, if the floor is not already in the queue. If added, the file size increases by one character.
+func AddToLog(floor int) {
 	if IsInLog(floor) {
 		return
 	}
