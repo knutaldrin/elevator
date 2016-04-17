@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -31,7 +30,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Println("Id:", *id)
+	log.Info("Id:", *id)
 	queue.SetID(*id)
 
 	currentDirection := driver.DirectionDown
