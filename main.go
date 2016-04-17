@@ -13,24 +13,16 @@ import (
 	"github.com/knutaldrin/elevator/queue"
 )
 
-// fuck main
 func main() {
-
 	id := flag.Uint("id", 1337, "Elevator ID")
-
 	flag.Parse()
 
-	if *id == 1337 {
-		log.Error("Elevator ID must be set")
-		os.Exit(1)
-	}
-
 	if *id > 9 {
-		log.Error("Id plz less than 10")
+		log.Error("Elevator ID must be between 0 and 9")
 		os.Exit(1)
 	}
 
-	log.Info("Id:", *id)
+	log.Info("Id: ", *id)
 	queue.SetID(*id)
 
 	currentDirection := driver.DirectionDown
@@ -49,9 +41,6 @@ func main() {
 
 	floorCh := make(chan driver.Floor)
 	go driver.FloorListener(floorCh)
-
-	stopCh := make(chan bool)
-	go driver.StopButtonListener(stopCh)
 
 	floorBtnCh := make(chan driver.ButtonEvent, 8)
 	go driver.FloorButtonListener(floorBtnCh)
@@ -74,8 +63,10 @@ func main() {
 	// Ping timeout so we start in case we have logged orders from a previous crash
 	timeoutCh <- true
 
+	// Main event loop
 	for {
 		select {
+		// Elevator has arrived at a new floor
 		case fl := <-floorCh:
 			queue.Update(fl)
 			if queue.ShouldStop(fl) {
@@ -95,6 +86,7 @@ func main() {
 				}()
 			}
 
+		// A floor button was pressed
 		case btn := <-floorBtnCh:
 			queue.NewOrder(btn.Floor, btn.Dir)
 			if btn.Dir != driver.DirectionNone {
@@ -105,6 +97,7 @@ func main() {
 				driver.Run(currentDirection)
 			}
 
+		// A message came in from the network
 		case o := <-orderReceiveCh:
 			switch o.Type {
 			case net.NewOrder:
@@ -120,6 +113,7 @@ func main() {
 				queue.ClearOrder(o.Floor, o.Direction)
 			}
 
+		// Something timed out. Wake if idle.
 		case <-timeoutCh:
 			currentDirection = queue.NextDirection()
 			if !doorOpen {

@@ -10,11 +10,9 @@ import (
 	"github.com/knutaldrin/elevator/log"
 )
 
-//bruker tekstfil/UTF-8 for enkel debugging
-
 const filename string = "OrderLog.txt"
 
-//ReadLog leser loggen og returnerer innholdet som en int slice
+// ReadLog reads the log and returns an int slice of floors
 func ReadLog() []int {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -31,7 +29,7 @@ func ReadLog() []int {
 
 	for {
 		s, err := reader.ReadString('\n')
-		n, sErr := strconv.ParseInt(strings.Replace(strings.Replace(s, "\r", "", -1), "\n", "", -1), 10, 32) //Fjerner \r\n og parser streng
+		n, sErr := strconv.ParseInt(strings.Replace(strings.Replace(s, "\r", "", -1), "\n", "", -1), 10, 32) // removes \r\n and parses string
 		if err != nil {
 			break
 		}

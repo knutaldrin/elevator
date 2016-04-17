@@ -3,7 +3,7 @@ package log
 import "fmt"
 import cli "github.com/ivpusic/go-clicolor/clicolor"
 
-const debug = true
+const debug = false
 const verbose = false
 
 // Error messages

@@ -70,11 +70,11 @@ func Reset() Floor {
 		for {
 			currentFloor = getFloor()
 			if currentFloor != -1 {
-				log.Info("At floor ", currentFloor, ", ready for service")
-				setFloorIndicator(currentFloor)
 				break
 			}
 		}
+		log.Info("At floor ", currentFloor, ", ready for service")
+		setFloorIndicator(currentFloor)
 		Stop()
 		OpenDoor()
 		time.Sleep(time.Second)
