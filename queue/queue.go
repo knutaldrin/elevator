@@ -1,4 +1,4 @@
-package newq
+package queue
 
 import (
 	"container/list"
