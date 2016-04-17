@@ -9,8 +9,6 @@ import (
 	"github.com/knutaldrin/elevator/net"
 )
 
-// TODO TODO TODO: There is no sensible reason why lights should be controlled here
-
 const timeoutDelay = time.Second * 10
 const delayUnit = time.Millisecond * 60 // TODO: Decrease
 var elevID uint
@@ -38,6 +36,15 @@ func SetID(id uint) {
 // SetTimeoutCh is a channel for the queue to notify when a timer runs out, in order to wake the elvator.
 func SetTimeoutCh(ch chan<- bool) {
 	timeoutCh = ch
+}
+
+//ImportInternalLog imports any locally saved internal orders to the active queue. Called at init.
+func ImportInternalLog() {
+	intSlice := queue.ReadLog()
+
+	for i := 0; i < len(intSlice); i++ {
+		shouldStop[driver.DirectionNone][i] = true
+	}
 }
 
 func isAhead(floor driver.Floor) bool {
@@ -153,8 +160,7 @@ func NewOrder(floor driver.Floor, dir driver.Direction) {
 	if dir == driver.DirectionNone { // From inside the elevator
 		shouldStop[dir][floor] = true
 		driver.ButtonLightOn(floor, dir)
-
-		// TODO: Save to log
+		queue.AddToLog(int(floor)) //Log internal order to file
 	} else { // From external panel on this or some other elevator
 
 		if floor == 0 {
@@ -202,15 +208,17 @@ func OrderAcceptedRemotely(floor driver.Floor, dir driver.Direction) {
 	log.Warning("Non-existant job accepted remotely")
 }
 
+//ClearOrderLocal is called by the local elevator, and clears both internal and external orders. Calls ClearOrder.
 func ClearOrderLocal(floor driver.Floor, dir driver.Direction) {
 	// Turn off inside too
 	shouldStop[driver.DirectionNone][floor] = false
 	driver.ButtonLightOff(floor, driver.DirectionNone)
 	dir = currentDir
+	queue.RemoveFromLog(int(floor))
 	ClearOrder(floor, dir)
 }
 
-// ClearOrder means an order is completed (either remotely or locally)
+// ClearOrder means an order is completed (either remotely or locally). Does not clear internal orders, but is called by ClearOrderLocal.
 func ClearOrder(floor driver.Floor, dir driver.Direction) {
 	if floor == 0 {
 		dir = driver.DirectionDown
