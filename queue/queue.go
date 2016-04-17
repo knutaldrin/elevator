@@ -180,7 +180,7 @@ func NewOrder(floor driver.Floor, dir driver.Direction) {
 					// Ping
 					timeoutCh <- true
 				}
-				// TODO: Send network message that we have accepted
+				// Send network message that we have accepted
 				net.SendOrder(net.OrderMessage{Type: net.AcceptedOrder, Floor: floor, Direction: dir})
 			}),
 		}
