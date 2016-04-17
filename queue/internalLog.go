@@ -1,8 +1,7 @@
-package main
+package queue
 
 import (
 	"bufio"
-	"io"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -33,7 +32,7 @@ func ReadLog() []int {
 	for {
 		s, err := reader.ReadString('\n')
 		n, sErr := strconv.ParseInt(strings.Replace(strings.Replace(s, "\r", "", -1), "\n", "", -1), 10, 32) //Fjerner \r\n og parser streng
-		if err == io.EOF {
+		if err != nil {
 			break
 		}
 		log.Check(err)
@@ -61,7 +60,7 @@ func writeLog(ns []int) {
 
 //isInLog is a boolean check of whether a floor is recorded in the log.
 func isInLog(floor int) bool {
-	intSlice := readLog()
+	intSlice := ReadLog()
 	for i := 0; i < len(intSlice); i++ {
 		if floor == intSlice[i] {
 			return true
@@ -72,7 +71,7 @@ func isInLog(floor int) bool {
 
 //RemoveFromLog removes a floor from the log file, shortening the file by one character. If the floor is not present in the log, nothing happens.
 func RemoveFromLog(floor int) {
-	oldSlice := readLog()
+	oldSlice := ReadLog()
 	var newSlice []int
 
 	for i := 0; i < len(oldSlice); i++ {
@@ -81,15 +80,19 @@ func RemoveFromLog(floor int) {
 		}
 	}
 	writeLog(newSlice)
+
+	log.Debug("Removed from log: ", floor)
 }
 
 //AddToLog adds a floor from the log file, if the floor is not already in the queue. If added, the file size increases by one character.
 func AddToLog(floor int) {
-	if IsInLog(floor) {
+	if isInLog(floor) {
 		return
 	}
 
-	intSlice := append(readLog(), floor)
+	intSlice := append(ReadLog(), floor)
 
 	writeLog(intSlice)
+
+	log.Debug("Logged floor: ", floor)
 }
