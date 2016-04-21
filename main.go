@@ -81,8 +81,7 @@ func main() {
 					time.Sleep(1 * time.Second)
 					doorOpen = false
 					driver.CloseDoor()
-					currentDirection = queue.NextDirection()
-					driver.Run(currentDirection)
+					timeoutCh <- true
 				}()
 			}
 
